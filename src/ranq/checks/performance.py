@@ -80,14 +80,18 @@ def core_web_vitals(ctx: AuditContext) -> Iterator[Issue]:
     }
     lab_issues = {k: v for k, v in lab_issues.items() if v}
     if lab_issues:
+        metrics = [m for m in ("LCP", "CLS") if any(m in v for v in lab_issues.values())]
+        label = "/".join(metrics)
         yield Issue(
             "lab-cwv-poor",
-            f"Lab LCP/CLS are poor on {len(lab_issues)} URL(s) (no field data)",
+            f"Lab {label} {'is' if len(metrics) == 1 else 'are'} poor on "
+            f"{len(lab_issues)} URL(s) (no field data)",
             Severity.MEDIUM,
             P,
-            "No Chrome UX Report data exists for these URLs (too little traffic), so lab metrics "
-            "are the best available estimate.",
-            FIXES["LCP"],
+            "No field data was returned for these measurements. Lab results are simulated "
+            "and vary between runs; they do not establish real-user performance or why field "
+            "data is unavailable.",
+            " ".join(FIXES[m] for m in metrics),
             effort=Effort.MEDIUM,
             urls=sorted(lab_issues),
             evidence=lab_issues,

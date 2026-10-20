@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from ranq.analysis import pagetype as pt
+from ranq.analysis.structured_data import canonical_type
 from ranq.config import EntityConfig
 from ranq.crawler.crawler import CrawlResult
 from ranq.urls import bare_host
@@ -116,15 +117,26 @@ def _org_nodes(crawl: CrawlResult) -> list[dict[str, Any]]:
     nodes = []
     for page in crawl.html_pages:
         for node in pt.json_ld_nodes(page):
-            if node.get("@type") in (
+            if {canonical_type(t) for t in pt.node_types(node)} & {
                 "Organization",
                 "Corporation",
                 "LocalBusiness",
                 "Person",
                 "WebSite",
-            ):
+            }:
                 nodes.append(node)
     return nodes
+
+
+def _schema_fact(crawl: CrawlResult, key: str) -> str | None:
+    """Use business facts before WebSite metadata, never a nested author's biography."""
+    nodes = [n for n in _org_nodes(crawl) if "Person" not in pt.node_types(n)]
+    nodes.sort(key=lambda n: "WebSite" in pt.node_types(n))
+    for node in nodes:
+        value = node.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def collect_same_as(crawl: CrawlResult, entity: EntityConfig) -> list[str]:
@@ -146,7 +158,7 @@ def name_variants(crawl: CrawlResult, entity: EntityConfig) -> Counter[str]:
             if len(parts) > 1:
                 counts[parts[-1].strip()] += 1
     for node in _org_nodes(crawl):
-        if node.get("@type") != "Person" and node.get("name"):
+        if "Person" not in pt.node_types(node) and node.get("name"):
             counts[str(node["name"]).strip()] += 1
     if entity.name:
         counts[entity.name] += 1
@@ -161,7 +173,7 @@ def brand_name(crawl: CrawlResult, entity: EntityConfig) -> str | None:
     if home is not None and home.open_graph.get("og:site_name"):
         return home.open_graph["og:site_name"].strip()
     for node in _org_nodes(crawl):
-        if node.get("@type") != "Person" and node.get("name"):
+        if "Person" not in pt.node_types(node) and node.get("name"):
             return str(node["name"]).strip()
     affixes: Counter[str] = Counter()
     for page in crawl.html_pages:
@@ -184,11 +196,24 @@ def analyze(crawl: CrawlResult, entity: EntityConfig) -> EntityReport:
         )
     # Keep only names that look like the same brand written differently.
     if name:
+        # Explicit alternateName values are valid aliases, not conflicting spellings.
+        aliases: set[str] = set()
+        for node in _org_nodes(crawl):
+            if "Person" in pt.node_types(node):
+                continue
+            alternate = node.get("alternateName") or []
+            values = [
+                node.get("name"),
+                *(alternate if isinstance(alternate, list) else [alternate]),
+            ]
+            names = {v.strip() for v in values if isinstance(v, str) and v.strip()}
+            if name in names:
+                aliases.update(names - {name})
         key = re.sub(r"[^a-z0-9]", "", name.lower())
         report.name_variants = {
             v: c
             for v, c in variants.items()
-            if key[:4] and key[:4] in re.sub(r"[^a-z0-9]", "", v.lower())
+            if v not in aliases and key[:4] and key[:4] in re.sub(r"[^a-z0-9]", "", v.lower())
         }
     logos = set()
     for node in _org_nodes(crawl):
@@ -200,10 +225,10 @@ def analyze(crawl: CrawlResult, entity: EntityConfig) -> EntityReport:
     report.logo_variants = sorted(logos)
     required = {
         "name": name,
-        "description": entity.description,
+        "description": entity.description or _schema_fact(crawl, "description"),
         "logo": entity.logo or (sorted(logos)[0] if logos else None),
-        "founded": entity.founded,
-        "category": entity.category,
+        "founded": entity.founded or _schema_fact(crawl, "foundingDate"),
+        "category": entity.category or _schema_fact(crawl, "category"),
     }
     report.missing_facts = [k for k, v in required.items() if not v]
     return report
@@ -318,12 +343,12 @@ def fact_sheet(
         "name": report.name,
         "legal_name": entity.legal_name,
         "type": entity.type,
-        "description": entity.description,
+        "description": entity.description or _schema_fact(crawl, "description"),
         "website": entity.url or crawl.start_url,
-        "category": entity.category,
+        "category": entity.category or _schema_fact(crawl, "category"),
         "location": entity.city,
         "address": entity.address or None,
-        "founded": entity.founded,
+        "founded": entity.founded or _schema_fact(crawl, "foundingDate"),
         "founders": entity.founders or None,
         "email": entity.email,
         "telephone": entity.telephone,

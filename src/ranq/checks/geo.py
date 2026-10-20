@@ -58,7 +58,7 @@ def ai_crawler_access(ctx: AuditContext) -> Iterator[Issue]:
         yield Issue(
             "ai-policy-implicit",
             "robots.txt has no explicit rules for AI crawlers",
-            Severity.LOW,
+            Severity.INFO,
             G,
             "Every AI bot falls back to the '*' group. That works, but an explicit policy documents "
             "your choice per purpose (training vs search vs user-initiated).",
@@ -249,14 +249,13 @@ def brand_consistency(ctx: AuditContext) -> Iterator[Issue]:
     if pairs and min(pairs) < 0.3:
         yield Issue(
             "brand-description-inconsistent",
-            "Your brand is described differently in markup, llms.txt and config",
-            Severity.LOW,
+            "Review wording differences between brand descriptions",
+            Severity.INFO,
             G,
-            "Search engines and AI assistants build their picture of an entity from the "
-            "statements about it. Descriptions that name different services or positioning "
-            "make the entity harder to summarize consistently.",
-            "Write one factual sentence (who you are, what you do, where) and use it verbatim "
-            "in Organization JSON-LD, llms.txt, ranq.yaml and every profile bio.",
+            "These descriptions have low word overlap. This heuristic cannot distinguish "
+            "a contradiction from compatible paraphrases and does not affect the health score.",
+            "Review the descriptions for factual conflicts. Keep accurate paraphrases; "
+            "identical wording across markup, llms.txt and config is not required.",
             effort=Effort.LOW,
             urls=[ctx.crawl.start_url],
             evidence=found,

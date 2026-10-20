@@ -4,6 +4,31 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Recognize array-valued business types when extracting names, profiles and logos. Reuse
+  published descriptions and founding dates in entity completeness checks and fact sheets,
+  and preserve multi-type business markup in generated fixes.
+- Recognize declared `alternateName` values instead of flagging them as inconsistent brands.
+- Recognize About/Contact sections with linked, nonempty fragment targets. Keep them out of
+  the crawl graph and avoid dead-end warnings for pages with valid section navigation.
+  Missing or empty fragment targets still do not satisfy these checks.
+- Apply Offer price requirements in Product/SoftwareApplication contexts rather than to
+  every service catalog. Validate the nested price value, not merely the presence of a
+  `priceSpecification` object; distinguish recommended currency from required price.
+- Name the failing lab metric (LCP, CLS, or both) and give the corresponding fixes, without
+  assuming why field data was unavailable.
+
+### Changed
+
+- Implicit AI crawler policies and word-overlap differences between brand descriptions are
+  informational and no longer reduce the health score. Actual blocked search bots and
+  explicit policy mismatches remain actionable findings.
+- Scores may increase due to these detector corrections alone. Establish a fresh baseline
+  with this version before measuring website improvements; retain the old reports.
+
 ## [0.4.0] - 2026-10-13
 
 ### Changed
