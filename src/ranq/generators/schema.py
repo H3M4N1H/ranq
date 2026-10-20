@@ -43,9 +43,9 @@ def _site_name(crawl: CrawlResult, entity: EntityConfig) -> str | None:
         return None
     if home.open_graph.get("og:site_name"):
         return home.open_graph["og:site_name"]
-    for node in pt.json_ld_nodes(home):
-        if node.get("@type") in ("Organization", "WebSite") and node.get("name"):
-            return str(node["name"])
+    existing = _existing_org(crawl) or _existing(crawl, ("WebSite",))
+    if existing.get("name"):
+        return str(existing["name"])
     return None
 
 
@@ -97,12 +97,14 @@ def _existing_logo(crawl: CrawlResult) -> str | None:
 def organization(crawl: CrawlResult, entity: EntityConfig) -> SchemaDoc:
     existing = _existing_org(crawl)
     org_type = entity.type or "Organization"
-    if entity.type == "Organization" and existing.get("@type") in ORG_TYPES[1:-1]:
-        org_type = str(existing["@type"])  # keep a more specific type the site already uses
+    if entity.type == "Organization" and pt.node_types(existing) & set(ORG_TYPES[:-1]):
+        org_type = next(t for t in ORG_TYPES if t in pt.node_types(existing))
     # Start from what the site already publishes (employee, address, contactPoint...) so the
     # generated node replaces it without losing anything; configured values win.
     data: dict[str, Any] = {"@context": CONTEXT, **existing}
     data.update({"@type": org_type, "@id": org_id(crawl)})
+    if entity.type == "Organization" and pt.node_types(existing) & set(ORG_TYPES[:-1]):
+        data["@type"] = existing["@type"]  # preserve scalar and multi-type business markup
     todo: list[str] = []
     fields = {
         "name": _site_name(crawl, entity),

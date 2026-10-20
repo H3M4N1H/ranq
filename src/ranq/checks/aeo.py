@@ -98,15 +98,15 @@ def eeat_site(ctx: AuditContext) -> Iterator[Issue]:
             "eeat-no-about",
             site.about,
             Severity.MEDIUM,
-            "an About page",
+            "an About page or section",
             "Explain who runs the site, their expertise and why users should trust it.",
         ),
         (
             "eeat-no-contact",
             site.contact,
             Severity.MEDIUM,
-            "a Contact page",
-            "Publish a contact page with real ways to reach you (email, address or form).",
+            "a Contact page or section",
+            "Publish a contact page or section with real ways to reach you (email, address or form).",
         ),
         (
             "eeat-no-privacy",

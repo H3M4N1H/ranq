@@ -115,6 +115,8 @@ class PageData:
     charset: str | None = None
     headings: list[Heading] = field(default_factory=list)
     links: list[Link] = field(default_factory=list)
+    # Valid same-document navigation, kept separately from the crawl graph.
+    section_links: list[str] = field(default_factory=list)
     images: list[Image] = field(default_factory=list)
     hreflangs: list[Hreflang] = field(default_factory=list)
     json_ld: list[str] = field(default_factory=list)  # raw script bodies

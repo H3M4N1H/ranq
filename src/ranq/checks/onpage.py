@@ -370,7 +370,9 @@ def internal_linking(ctx: AuditContext) -> Iterator[Issue]:
             source=sources.LINKS,
             estimate=True,
         )
-    dead_ends = sorted(p.url for p in ctx.pages if p.is_indexable and not p.internal_links)
+    dead_ends = sorted(
+        p.url for p in ctx.pages if p.is_indexable and not p.internal_links and not p.section_links
+    )
     if dead_ends:
         yield Issue(
             "no-outlinks",

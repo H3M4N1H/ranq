@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from ranq.analysis.pagetype import json_ld_nodes
 from ranq.models import PageData
 
 ARTICLE_TYPES = {"Article", "NewsArticle", "BlogPosting", "TechArticle", "Report"}
@@ -27,7 +28,7 @@ RULES: dict[str, tuple[list[str], list[str]]] = {
         ["image", "description", "offers|review|aggregateRating", "brand", "sku"],
     ),
     "Offer": (
-        ["price|priceSpecification", "priceCurrency|priceSpecification"],
+        [],  # Generic service offers do not inherit Product rich-result requirements.
         ["availability", "url"],
     ),
     "FAQPage": (["mainEntity"], []),
@@ -80,7 +81,9 @@ def canonical_type(t: str) -> str:
     t = t.split("/")[-1].split(":")[-1]
     if t in ARTICLE_TYPES:
         return "Article"
-    if t not in RULES and t.endswith(BUSINESS_SUFFIXES):
+    if t in {"ExerciseGym", "HealthClub", "ProfessionalService"} or (
+        t not in RULES and t.endswith(BUSINESS_SUFFIXES)
+    ):
         return "LocalBusiness"
     return t
 
@@ -149,18 +152,39 @@ def _has(node: dict[str, Any], spec: str) -> bool:
     for key in spec.split("|"):
         if key == "@parent":
             continue
-        value = node.get(key)
+        value: Any = node
+        for part in key.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
         if value not in (None, "", [], {}):
             return True
     return False
 
 
 def validate_node(
-    node: dict[str, Any], problems: list[SchemaProblem], nested: bool = False
+    node: dict[str, Any],
+    problems: list[SchemaProblem],
+    nested: bool = False,
+    offer_context: bool = False,
 ) -> None:
-    for raw_type in _types_of(node):
-        t = canonical_type(raw_type)
+    for t in dict.fromkeys(canonical_type(t) for t in _types_of(node)):
         required, recommended = RULES.get(t, ([], []))
+        if t == "Offer":
+            offered = node.get("itemOffered")
+            is_product = isinstance(offered, dict) and "Product" in {
+                canonical_type(t) for t in _types_of(offered)
+            }
+            if offer_context or is_product:
+                required = ["price|priceSpecification.price"]
+                # Currency is recommended for Product snippets, required for merchant
+                # listings. This validator does not infer merchant-listing intent.
+                if not _has(node, "priceCurrency|priceSpecification.priceCurrency"):
+                    problems.append(
+                        SchemaProblem(
+                            t,
+                            "missing recommended 'priceCurrency or priceSpecification.priceCurrency'",
+                            "warning",
+                        )
+                    )
         for spec in required:
             if "@parent" in spec and nested:
                 continue
@@ -194,11 +218,28 @@ def validate_node(
             continue
         for child in value if isinstance(value, list) else [value]:
             if isinstance(child, dict) and "@type" in child:
-                validate_node(child, problems, nested=True)
+                validate_node(
+                    child,
+                    problems,
+                    nested=True,
+                    offer_context=key == "offers"
+                    and bool(
+                        {canonical_type(t) for t in _types_of(node)}
+                        & {"Product", "SoftwareApplication"}
+                    ),
+                )
 
 
 def analyze_page(page: PageData) -> PageSchema:
     result = PageSchema(url=page.url, has_microdata=page.has_microdata, has_rdfa=page.has_rdfa)
+    # Graph-based Product markup can reference an Offer in another graph node/script.
+    product_offer_ids = set()
+    for node in json_ld_nodes(page):
+        if {canonical_type(t) for t in _types_of(node)} & {"Product", "SoftwareApplication"}:
+            offers = node.get("offers") or []
+            for offer in offers if isinstance(offers, list) else [offers]:
+                if isinstance(offer, dict) and isinstance(offer.get("@id"), str):
+                    product_offer_ids.add(offer["@id"])
     for raw in page.json_ld:
         try:
             data = json.loads(raw)
@@ -220,7 +261,11 @@ def analyze_page(page: PageData) -> PageSchema:
                         "error",
                     )
                 )
-            validate_node(node, item.problems)
+            validate_node(
+                node,
+                item.problems,
+                offer_context=isinstance(node.get("@id"), str) and node["@id"] in product_offer_ids,
+            )
             result.items.append(item)
     return result
 

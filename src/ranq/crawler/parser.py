@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from urllib.parse import unquote, urljoin, urlsplit
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 from selectolax.lexbor import LexborNode as Node
@@ -202,8 +203,26 @@ def parse_html(page: PageData, html: str, site: str) -> PageData:
             if ref.startswith("http://"):
                 page.mixed_content.append(ref)
 
+    # Do not turn #section links into extra pages, but retain real section targets for
+    # navigation/trust checks. A placeholder #privacy without a target is not evidence.
+    section_ids = {
+        n.attributes["id"]
+        for n in tree.css("[id]")
+        if n.attributes.get("id") and clean(n.text(separator=" "))
+    }
+    page.section_links = []
     for node in tree.css("a[href]"):
-        target = normalize(node.attributes.get("href") or "", base)
+        href = node.attributes.get("href") or ""
+        resolved = urljoin(base, href)
+        fragment = urlsplit(resolved).fragment
+        target = normalize(resolved)
+        if fragment and target == normalize(page.final_url):
+            if unquote(fragment) in section_ids:
+                section_url = f"{target}#{fragment}"
+                if section_url not in page.section_links:
+                    page.section_links.append(section_url)
+            continue
+        target = normalize(href, base)
         if target is None:
             continue
         page.links.append(

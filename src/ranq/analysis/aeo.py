@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from ranq.analysis import pagetype as pt
 from ranq.analysis.keywords import KeywordReport
@@ -231,8 +231,14 @@ SITE_PAGES = {
 def site_eeat(pages: list[PageData]) -> SiteEEAT:
     site = SiteEEAT()
     known = {link.url for p in pages for link in p.internal_links} | {p.url for p in pages}
+    sections = sorted({url for p in pages for url in p.section_links})
     for key, pattern in SITE_PAGES.items():
         match = next((u for u in sorted(known) if pattern.search(urlsplit(u).path)), None)
+        if match is None:
+            match = next(
+                (u for u in sections if pattern.search("/" + unquote(urlsplit(u).fragment))),
+                None,
+            )
         setattr(site, key, match)
     return site
 
