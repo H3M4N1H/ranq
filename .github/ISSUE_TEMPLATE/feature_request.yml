@@ -1,0 +1,36 @@
+name: Feature request
+description: A new check, generator, integration or command.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: For a new check, say what it detects, what it should not fire on, and the fix it would suggest.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Guideline or documentation
+      description: New checks must cite the search engine's or AI operator's own docs.
+      placeholder: https://developers.google.com/search/docs/...
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Ground rules
+      options:
+        - label: This does not need a paid API, scraping search results, or automating consumer AI apps.
+          required: true
+        - label: I would like to implement this myself.

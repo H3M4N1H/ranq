@@ -48,3 +48,6 @@ credentials*.json
 *.swp
 .DS_Store
 Thumbs.db
+
+# Raw recording behind docs/demo.gif (scripts/record_demo.py)
+docs/demo.cast
