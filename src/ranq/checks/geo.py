@@ -57,13 +57,16 @@ def ai_crawler_access(ctx: AuditContext) -> Iterator[Issue]:
     if not any(b.explicit for b in geo.bots):
         yield Issue(
             "ai-policy-implicit",
-            "robots.txt has no explicit rules for AI crawlers",
+            "Optional: define an explicit AI crawler policy",
             Severity.INFO,
             G,
-            "Every AI bot falls back to the '*' group. That works, but an explicit policy documents "
-            "your choice per purpose (training vs search vs user-initiated).",
-            "Choose a preset (allow-all / search-only / deny-all) and generate robots.txt with "
-            "`ranq fix --ai-policy search-only`.",
+            "Your robots.txt currently lets AI crawlers follow the normal '*' rules. That is valid "
+            "and needs no change when the public site has nothing you want to restrict. Explicit "
+            "AI rules are mainly useful when you want different policies for training, search or "
+            "user-initiated bots.",
+            "Leave it as-is, or add explicit rules only if the site has paths you intentionally "
+            "want crawlers to avoid (for example staging, admin/internal areas, duplicate utility "
+            "pages or crawl-heavy endpoints), or if you want a specific AI-bot policy.",
             urls=[f"{ctx.site}/robots.txt"],
             evidence={b.token: "allowed" if b.allowed else "blocked" for b in geo.bots},
             source=sources.ROBOTS_TXT,
@@ -78,13 +81,14 @@ def llms_txt(ctx: AuditContext) -> Iterator[Issue]:
     if geo.llms_txt_status != 200:
         yield Issue(
             "llms-txt-missing",
-            "No /llms.txt file",
-            Severity.LOW,
+            "Optional: no /llms.txt file",
+            Severity.INFO,
             G,
-            "llms.txt is a proposed standard that gives LLM tools a curated Markdown map of your "
-            "site. No major AI provider has confirmed using it, so expect little direct effect; it "
-            "is cheap to publish and helps agents and IDE tools that do read it.",
-            "Publish the llms.txt (and optionally llms-full.txt / .md mirrors) from `ranq fix`.",
+            "llms.txt is a proposed convention for giving AI tools a curated Markdown map of a "
+            "site. It is not required for SEO, indexing or AI visibility, and major AI providers "
+            "do not require it.",
+            "No action is required. Publish llms.txt only if you want to provide an additional "
+            "machine-readable site guide for agents and tools that choose to read it.",
             urls=[f"{ctx.site}/llms.txt"],
             evidence={"status": geo.llms_txt_status},
             source=sources.LLMS_TXT,
@@ -126,13 +130,14 @@ def entity_signals(ctx: AuditContext) -> Iterator[Issue]:
     if not ent.same_as:
         yield Issue(
             "entity-no-sameas",
-            "No sameAs profile links for your brand entity",
-            Severity.MEDIUM,
+            "Optional: no sameAs profile links for your brand entity",
+            Severity.INFO,
             G,
-            "sameAs links in Organization markup connect your site to the same entity on other "
-            "platforms, helping search engines and AI systems disambiguate your brand.",
-            "List official profiles under entity.same_as in ranq.yaml and publish the "
-            "Organization JSON-LD from `ranq fix`.",
+            "sameAs links can help search engines and AI systems connect your site to official "
+            "profiles on other platforms, but they are not required for a valid Organization "
+            "entity or for normal indexing.",
+            "No action is required. Add only official, relevant profiles when they exist; do not "
+            "create profiles just to satisfy this check.",
             urls=[ctx.crawl.start_url],
             source=f"{sources.G}/appearance/structured-data/organization",
         )
@@ -158,7 +163,8 @@ def entity_signals(ctx: AuditContext) -> Iterator[Issue]:
             G,
             "These basic facts are not set in ranq.yaml or found in your markup, so the "
             "generated fact sheet and Organization markup leave them out.",
-            "Fill in the entity section of ranq.yaml (only with accurate facts).",
+            "Fill in the entity section of ranq.yaml only for facts that are accurate and useful; "
+            "missing optional facts do not require filler values.",
             evidence={"missing": ent.missing_facts},
             urls=[ctx.crawl.start_url],
             source=sources.SD_GENERAL,

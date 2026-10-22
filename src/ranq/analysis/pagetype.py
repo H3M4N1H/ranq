@@ -14,6 +14,12 @@ ARTICLE_PATH = re.compile(
     r"/(blog|news|articles?|posts?|guides?|insights|stories|learn)/[^/]+", re.I
 )
 PRODUCT_PATH = re.compile(r"/(products?|shop|store|item|p)/[^/]+", re.I)
+COLLECTION_PATH = re.compile(r"^/(work|portfolio|projects?|case-studies|events?|gallery)/?$", re.I)
+LEGAL_PATH = re.compile(
+    r"^/(privacy(?:-policy)?|terms(?:-of-(?:service|use))?|tos|legal|"
+    r"imprint|impressum|cookie(?:-policy)?)(?:/|\.html?)?$",
+    re.I,
+)
 SOCIAL_HOSTS = (
     "facebook.com",
     "twitter.com",
@@ -93,6 +99,20 @@ def schema_types(page: PageData) -> set[str]:
         t = node.get("@type")
         types.update(str(x) for x in (t if isinstance(t, list) else [t]))
     return types
+
+
+def is_collection(page: PageData) -> bool:
+    """Recognize collection roots or page-level markup, never infer from a parent path."""
+    if is_article(page) or is_product(page):
+        return False
+    return bool(COLLECTION_PATH.fullmatch(urlsplit(page.url).path)) or any(
+        "CollectionPage" in node_types(node) for node in top_nodes(page)
+    )
+
+
+def is_legal(page: PageData) -> bool:
+    """Recognize common legal document paths without exempting their child pages."""
+    return bool(LEGAL_PATH.fullmatch(urlsplit(page.url).path))
 
 
 def is_article(page: PageData) -> bool:

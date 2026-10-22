@@ -184,12 +184,20 @@ Register checks from any importable module:
 from ranq.checks.base import AuditContext, check
 from ranq.models import Category, Issue, Severity
 
+
 @check("my-check", Category.ONPAGE)
 def my_check(ctx: AuditContext):
     for page in ctx.pages:
         if "lorem ipsum" in page.text.lower():
-            yield Issue("my-check", "Placeholder text", Severity.HIGH, Category.ONPAGE,
-                        "Lorem ipsum found.", "Replace it.", urls=[page.url])
+            yield Issue(
+                "my-check",
+                "Placeholder text",
+                Severity.HIGH,
+                Category.ONPAGE,
+                "Lorem ipsum found.",
+                "Replace it.",
+                urls=[page.url],
+            )
 ```
 
 Then list the module under `plugins:` in ranq.yaml, or expose it through the

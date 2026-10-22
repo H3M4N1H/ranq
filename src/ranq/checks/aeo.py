@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 from ranq import sources
+from ranq.analysis import pagetype as pt
 from ranq.analysis.aeo import AEOReport
 from ranq.analysis.keywords import KeywordReport
 from ranq.checks.base import AuditContext, check
@@ -23,10 +24,11 @@ def answers(ctx: AuditContext) -> Iterator[Issue]:
     report = _report(ctx)
     if report is None:
         return
+    legal_urls = {p.url for p in ctx.pages if pt.is_legal(p)}
     weak = {
         p.url: [f"{q.question} ({q.words} words)" for q in p.qa if not q.ideal]
         for p in report.pages
-        if p.qa and any(not q.ideal for q in p.qa)
+        if p.url not in legal_urls and p.qa and any(not q.ideal for q in p.qa)
     }
     if weak:
         yield Issue(

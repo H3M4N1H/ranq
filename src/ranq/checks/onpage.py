@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 
 from ranq import sources
+from ranq.analysis import pagetype as pt
 from ranq.checks.base import AuditContext, check
 from ranq.models import Category, Effort, Issue, PageData, Severity
 from ranq.urls import normalize
@@ -246,7 +247,10 @@ def content_depth(ctx: AuditContext) -> Iterator[Issue]:
     thin = {
         p.url: p.word_count
         for p in ctx.pages
-        if p.is_indexable and p.word_count < 200 and p.url != ctx.crawl.start_url
+        if p.is_indexable
+        and p.word_count < 200
+        and p.url != ctx.crawl.start_url
+        and not pt.is_collection(p)
     }
     if thin:
         yield Issue(

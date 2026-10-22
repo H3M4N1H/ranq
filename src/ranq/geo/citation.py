@@ -121,5 +121,10 @@ def score_page(page: PageData, aeo: PageAEO | None, today: date | None = None) -
 
 
 def score_pages(pages: list[PageData], aeo_pages: dict[str, PageAEO]) -> list[CitationScore]:
-    scores = [score_page(p, aeo_pages.get(p.url)) for p in pages if p.is_indexable]
+    # Collections and legal documents are not article-style citation targets.
+    scores = [
+        score_page(p, aeo_pages.get(p.url))
+        for p in pages
+        if p.is_indexable and not pt.is_collection(p) and not pt.is_legal(p)
+    ]
     return sorted(scores, key=lambda s: s.score)
