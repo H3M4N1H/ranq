@@ -63,7 +63,7 @@ a{color:var(--accent)}
 <div class="disclaimer">{{ r.disclaimer }}</div>
 
 <div class="grid">
-  <div class="card score"><div class="k">Automated audit health <span class="est">estimate</span></div><div class="v">{{ r.score }}</div></div>
+  <div class="card"><div class="k">Audit assessment</div><div class="v">{{ d.assessment.status }}</div></div>
   {% for sev in ['critical','high','medium','low'] %}
   <div class="card"><div class="k">{{ sev }}</div><div class="v sev-{{ sev }}">{{ r.severity_counts[sev] }}</div></div>
   {% endfor %}
@@ -71,8 +71,8 @@ a{color:var(--accent)}
   <div class="card"><div class="k">Avg response</div><div class="v">{{ r.stats.avg_response_ms }}<small> ms</small></div></div>
 </div>
 
-<p>{{ d.score_note }}</p>
-<p>Findings by area: {% for name, row in d.domain_scores.items() %}{{ name }} {{ row.score }}/100 ({{ row.scored_findings }} scored findings){% if not loop.last %} · {% endif %}{% endfor %}</p>
+<p>{{ d.assessment.note }}</p>
+<p>Findings by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}</p>
 {% for note in d.coverage.notes %}<p>{{ note }}</p>{% endfor %}
 
 <nav class="tabs" role="tablist">
@@ -122,7 +122,8 @@ a{color:var(--accent)}
 
 {% if d.comparison %}{% set c = d.comparison %}
 <section class="tab" id="tab-changes">
-  <p>Since {{ c.previous_generated_at }}: score <strong>{{ c.previous_score }} &rarr; {{ c.score }}</strong> ({% if c.delta is not none %}<span class="{{ 'sev-low' if c.delta > 0 else 'sev-high' if c.delta < 0 else '' }}">{{ '+' if c.delta > 0 else '' }}{{ c.delta }}</span>{% else %}{{ c.comparison_note }}{% endif %}) · {{ c.fixed|length }} no longer reported · {{ c.new|length }} new · {{ c.changed|length }} changed · {{ c.unchanged }} unchanged</p>
+  <p>Since {{ c.previous_generated_at }}: {{ c.fixed|length }} no longer reported · {{ c.new|length }} new · {{ c.changed|length }} changed · {{ c.unchanged }} unchanged</p>
+  <p>Changes in findings can reflect measurements, coverage or detector changes, not just website changes.</p>
   {% if c.fixed or c.new or c.changed %}
   <table><thead><tr><th>Status</th><th>Severity</th><th>Issue</th><th>URLs before &rarr; now</th></tr></thead><tbody>
   {% for i in c.fixed %}<tr><td class="sev-low">no longer reported</td><td class="sev-{{ i.severity }}">{{ i.severity }}</td><td>{{ i.title }}</td><td>{{ i.before }} &rarr; 0</td></tr>{% endfor %}
@@ -130,20 +131,14 @@ a{color:var(--accent)}
   {% for i in c.changed %}<tr><td class="sev-medium">changed</td><td class="sev-{{ i.severity }}">{{ i.severity }}</td><td>{{ i.title }}</td><td>{{ i.before }} &rarr; {{ i.after }}</td></tr>{% endfor %}
   </tbody></table>
   {% endif %}
-  {% if c.pages %}
-  <h3>Page scores</h3>
-  <table><thead><tr><th>Page</th><th>Before</th><th>Now</th></tr></thead><tbody>
-  {% for p in c.pages %}<tr><td class="url">{{ p.url }}</td><td>{{ p.before if p.before is not none else 'new' }}</td><td>{{ p.after if p.after is not none else 'gone' }}</td></tr>{% endfor %}
-  </tbody></table>
-  {% endif %}
 </section>
 {% endif %}
 
 {% if d.page_scores %}
 <section class="tab" id="tab-pages">
-  <p>Each page is scored on its own page-level issues (worst first). Site-wide issues such as a missing About section only affect the overall health score. <span class="est">heuristic estimate</span></p>
-  <table><thead><tr><th>Page</th><th>Score</th><th>Issues on this page</th></tr></thead><tbody>
-  {% for p in d.page_scores %}<tr><td class="url">{{ p.url }}</td><td><strong>{{ p.score }}</strong></td><td>{% for i in p.issues %}<span class="sev-{{ i.severity }}">{{ i.severity }}</span> {{ i.title }}{% if not loop.last %}<br>{% endif %}{% else %}<span class="est">none</span>{% endfor %}</td></tr>{% endfor %}
+  <p>Each page lists its detected issues. Site-wide findings are listed separately; an issue-free page is not a verified pass.</p>
+  <table><thead><tr><th>Page</th><th>Status</th><th>Issues on this page</th></tr></thead><tbody>
+  {% for p in d.page_scores %}<tr><td class="url">{{ p.url }}</td><td><strong>{{ p.status|default("Not assessed") }}</strong></td><td>{% for i in p.issues %}<span class="sev-{{ i.severity }}">{{ i.severity }}</span> {{ i.title }}{% if not loop.last %}<br>{% endif %}{% else %}<span class="est">none</span>{% endfor %}</td></tr>{% endfor %}
   </tbody></table>
 </section>
 {% endif %}

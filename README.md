@@ -62,7 +62,7 @@ Changes between versions are in the
 | **GEO** | Per-bot robots.txt policy for 15 AI crawlers/tokens (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Google-Extended, Applebot-Extended, CCBot, Bytespider, Meta-ExternalAgent, Amazonbot, cohere-ai); `/llms.txt`, `/llms-full.txt` and Markdown mirrors; entity fact sheet; sameAs graph, brand-consistency checklist and a check that markup, llms.txt and config describe the brand the same way; contact email hidden by Cloudflare obfuscation; Wikidata search + QuickStatements draft; citation-friendliness score; Common Crawl presence; AI-visibility tracker (SQLite) |
 | **Indexing** | Sitemap generator, IndexNow (key file + verified batch submission of changed URLs), Google Search Console API (sitemap submit, quota-aware URL Inspection), Bing Webmaster API, engine coverage table, "why isn't this indexed?" diagnostic |
 | **Off-page** | Opportunity checklist, curated directory list, robots-aware broken-link finder with Wayback lookups, unlinked brand-mention finder (Hacker News + Wikipedia APIs), strict anti-spam policy |
-| **Reporting** | Prioritized issues (Critical/High/Medium/Low) with impact, effort, exact fix, source and evidence; health score where site-wide issues count in full, plus a score for every page; framework detection; standalone HTML dashboard + Markdown + JSON; 30/60/90-day plan; "what this tool cannot do" section |
+| **Reporting** | Prioritized issues (Critical/High/Medium/Low) with impact, effort, exact fix, source and evidence; evidence-based SEO/AEO/GEO assessments with coverage and per-page findings; framework detection; standalone HTML dashboard + Markdown + JSON; 30/60/90-day plan; "what this tool cannot do" section |
 | **`ranq fix`** | Ready-to-paste robots.txt, sitemap.xml, llms.txt (extends a hand-written one instead of replacing it), JSON-LD, meta tags, security headers (built from your live headers, never weakening them) and redirects for nginx, Apache, Vercel, Netlify and Cloudflare. A FRAMEWORK.md says where each file goes in the detected stack, and Next.js App Router sites also get `app/robots.ts`, `app/sitemap.ts` and a JSON-LD component. Applies to a *local* directory only after a diff preview and per-file confirmation |
 
 ## Install
@@ -300,8 +300,13 @@ check API and the review bar, and report vulnerabilities privately as described 
 
 MIT - see [LICENSE](https://github.com/H3M4N1H/ranq/blob/main/LICENSE).
 
-### Understanding the score
+### Understanding the assessment
 
-Ranq reports **automated audit health**, with separate SEO/AEO/GEO findings scores and measurement coverage. It does not measure rankings or actual AI visibility. See [the scoring model](docs/SCORING.md) for weights, calibration scenarios, and comparison limitations.
+Ranq reports **Critical issues**, **Needs attention**, **Minor issues**, **No issues detected**,
+or **Not assessed**, with separate SEO/AEO/GEO findings and measurement coverage. These are
+severity summaries, not ranking predictions or percentage grades. Unknown is not a pass.
+See [the assessment rules](docs/SCORING.md) for the simple rubric and its limitations.
 
-Terminal audits show a compact summary by default. Use `ranq audit URL --verbose` (or `-v`) for per-page scores, informational notes, detailed comparisons and all report paths. HTML, Markdown and JSON reports always retain the full detail.
+Terminal audits show a compact summary by default. Use `ranq audit URL --verbose` (or `-v`)
+for per-page findings, informational notes, detailed comparisons and all report paths.
+HTML, Markdown and JSON reports retain the full detail.

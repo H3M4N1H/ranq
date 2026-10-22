@@ -73,22 +73,29 @@ def core_web_vitals(ctx: AuditContext) -> Iterator[Issue]:
             source=sources.PAGESPEED_API,
             estimate=True,
         )
-    lab_issues = {
-        r.url: {m: v for m, v in r.lab.items() if m in ("LCP", "CLS") and rate(m, v) == "poor"}
-        for r in results
-        if not r.field_data
-    }
-    lab_issues = {k: v for k, v in lab_issues.items() if v}
+    # Prefer field data per metric, not per entire result. Preserve other lab metrics
+    # when field data is partial, and don't let a second tool overwrite a poor result.
+    field_metrics = {(r.url, metric) for r in results for metric in r.field_data}
+    lab_issues: dict[str, dict[str, float]] = {}
+    for r in results:
+        for metric, value in r.lab.items():
+            if (
+                metric in ("LCP", "CLS")
+                and (r.url, metric) not in field_metrics
+                and rate(metric, value) == "poor"
+            ):
+                metrics_for_url = lab_issues.setdefault(r.url, {})
+                metrics_for_url[metric] = max(metrics_for_url.get(metric, value), value)
     if lab_issues:
         metrics = [m for m in ("LCP", "CLS") if any(m in v for v in lab_issues.values())]
         label = "/".join(metrics)
         yield Issue(
             "lab-cwv-poor",
             f"Lab {label} {'is' if len(metrics) == 1 else 'are'} poor on "
-            f"{len(lab_issues)} URL(s) (no field data)",
+            f"{len(lab_issues)} URL(s) (no field data for these metrics)",
             Severity.MEDIUM,
             P,
-            "No field data was returned for these measurements. Lab results are simulated "
+            "No field data was returned for these metrics. Lab results are simulated "
             "and vary between runs; they do not establish real-user performance or why field "
             "data is unavailable.",
             " ".join(FIXES[m] for m in metrics),

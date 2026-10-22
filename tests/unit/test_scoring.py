@@ -129,7 +129,7 @@ def test_legacy_comparison_renders_without_false_delta() -> None:
     report = Report("https://example.test", "today", {}, [], {}, 86)
     report.comparison = compare({"score": 98, "issues": []}, 86, [], [])
     for rendered in (render_html(report), render_markdown(report)):
-        assert "Scoring model changed" in rendered
+        assert "website changes" in rendered
         assert "-12" not in rendered
 
 

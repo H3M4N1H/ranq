@@ -114,9 +114,11 @@ def run_checks(ctx: AuditContext) -> list[Issue]:
     load_plugins(ctx.config.plugins)
     disabled = set(ctx.config.disabled_checks)
     issues: list[Issue] = []
+    ctx.extras["checks_run"] = []
     for spec in REGISTRY.values():
         if spec.id in disabled:
             continue
+        ctx.extras["checks_run"].append({"id": spec.id, "category": str(spec.category)})
         for issue in spec.fn(ctx):
             if issue.check_id not in disabled:
                 issues.append(issue)

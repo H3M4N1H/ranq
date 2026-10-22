@@ -22,7 +22,12 @@ def test_compare_buckets() -> None:
         "issues": [
             {"check_id": "h1-missing", "title": "no H1", "severity": "medium", "urls": ["a"]},
             {"check_id": "thin-content", "title": "thin", "severity": "medium", "urls": ["a", "b"]},
-            {"check_id": "llms-txt-missing", "title": "llms", "severity": "low", "urls": ["x"]},
+            {
+                "check_id": "llms-txt-missing",
+                "title": "llms",
+                "severity": "low",
+                "urls": ["https://s.test/0"],
+            },
         ],
         "page_scores": [{"url": "https://s.test/", "score": 80}],
     }
@@ -77,3 +82,15 @@ def test_audit_compares_with_previous_run(site_url: str, tmp_path: Path) -> None
     assert len(list((out / "history").glob("report-*.json"))) >= 1
     other = CliRunner().invoke(app, [*args, "--no-compare"])
     assert "Since" not in other.output
+
+
+def test_same_count_different_urls_is_a_changed_finding() -> None:
+    previous = {
+        "score": 90,
+        "issues": [
+            {"check_id": "h1-missing", "severity": "medium", "urls": ["https://s.test/old"]}
+        ],
+    }
+    result = compare(previous, 90, [_issue("h1-missing", Severity.MEDIUM, 1)], [])
+    assert [i.check_id for i in result.changed] == ["h1-missing"]
+    assert result.unchanged == 0
