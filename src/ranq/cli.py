@@ -312,14 +312,19 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
         or "No actionable findings"
     )
     assessment = report.assessment
+    grade = assessment["grade"]["score"]
+    grade_text = f"{grade}/100" if grade is not None else "Not assessed"
+    console.print(f"\n[bold]Ranq custom grade: {grade_text}[/bold]")
     console.print(
-        f"\nAudit: [bold]{assessment['status']}[/bold] · "
+        f"Audit: [bold]{assessment['status']}[/bold] · "
         f"{report.stats['html_pages']} pages · {count_text}"
     )
     console.print(
         "[dim]"
         + " · ".join(
-            f"{name}: {row['status']}"
+            f"{name}: {row['grade']['score']}/100"
+            if row["grade"]["score"] is not None
+            else f"{name}: Not assessed"
             for name, row in assessment["domains"].items()
             if name != "Performance"
         )
@@ -341,6 +346,7 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
         # Never hide incomplete-crawl, disabled-check or measurement-failure warnings.
         for note in coverage.get("notes", [])[2:]:
             console.print(f"[yellow]{escape(note)}[/yellow]")
+    console.print("[dim]Custom heuristic, not an industry-standard SEO grade.[/dim]")
     _print_comparison(report, verbose=verbose)
     if verbose and report.stats.get("framework"):
         console.print(f"[dim]Detected: {escape(report.stats['framework'])}[/dim]")

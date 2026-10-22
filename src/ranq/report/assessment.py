@@ -1,8 +1,9 @@
-"""Simple findings-based assessment. No invented percentage or ranking prediction."""
+"""Simple findings-based assessment. With a separate, explicitly custom numeric grade."""
 
 from typing import Any
 
 from ranq.models import Issue, Severity
+from ranq.report.scoring import custom_grade
 
 ASSESSMENT_NOTE = (
     "Assessment reflects detected issues, not a percentage of SEO quality. "
@@ -41,11 +42,13 @@ def assess(issues: list[Issue], coverage: dict[str, Any]) -> dict[str, Any]:
         ]
         domains[domain] = {
             "status": status([i.severity.value for i in group], domain in assessed),
+            "grade": custom_grade(group, coverage.get("html_pages", 0), domain in assessed),
             "findings": len(group),
             "affected_urls": sorted({url for i in group for url in i.urls}),
         }
     return {
-        "version": "1",
+        "version": "2",
+        "grade": custom_grade(issues, coverage.get("html_pages", 0), bool(assessed)),
         "status": status([i.severity.value for i in issues], bool(assessed)),
         "domains": domains,
         "limited": bool(coverage.get("truncated") or coverage.get("disabled_checks")),

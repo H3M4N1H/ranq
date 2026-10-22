@@ -137,7 +137,8 @@ def test_reports_present_statuses_and_mark_legacy_score_deprecated() -> None:
         assert "Not assessed" in text
         assert "not a percentage" in text
         assert "Automated audit health" not in text
-        assert "100/100" not in text
+        assert "Ranq custom grade:" in text
+        assert "not an industry standard" in text
     data = report.to_dict()
     assert data["score_deprecated"] is True
     assert "Deprecated" in data["score_note"]
