@@ -1,8 +1,39 @@
 # Audit assessment
 
-Ranq 0.5 replaces displayed percentage grades with a small, transparent findings rubric.
-The old scores were not validated SEO grades. Changing a multiplier could make results
-look better or worse without making them more accurate, so they are no longer presented.
+Ranq 0.5 presents a **Ranq custom grade /100** alongside a severity assessment.
+This is a transparent heuristic, not an industry standard, empirical SEO-quality percentage,
+or ranking/AI-visibility prediction. Whole numbers avoid suggesting unsupported precision.
+
+## Custom grade (version 1)
+
+Weights: critical 100, high 40, medium 15, low 5, INFO 0. These are Ranq policy choices,
+not measured ranking effects. They are not tuned to any particular website or desired score.
+
+1. Group observations by check ID. Group field CWV, lab CWV and Lighthouse performance
+   findings into one `web-performance` family to avoid charging overlapping evidence twice.
+   Other performance checks (such as hidden H1) remain independent.
+2. Within each family, use the highest severity weight per affected URL. Duplicate reports
+   cannot increase the grade penalty. A site-wide observation applies to every audited page.
+3. Family penalty = `0.3 * highest weight + 0.7 * mean weight across audited HTML pages`.
+   Unaffected pages contribute zero. Missing affected URLs are conservatively site-wide.
+   The baseline prevents a genuine defect disappearing into a large crawl; the mean reflects
+   reach. Site-wide findings cannot be diluted by adding pages.
+4. Grade = `round(100 * exp(-sum(family penalties) / 100))`. This monotonic, diminishing
+   curve avoids a sudden zero when several findings accumulate. INFO contributes nothing.
+   Example: one medium finding on all pages yields 86; one low yields 95; one critical
+   yields 37. The severity status always remains visible beside the number.
+5. Apply the same formula independently to each area. The overall grade includes all
+   findings directly; it is not an average padded by clean or unavailable areas.
+
+No audited HTML pages means **Not assessed**, not zero or 100. An area with neither executed
+analysis nor observed actionable findings is also ungraded. Coverage limitations remain
+visible but do not invent site defects. Grades from different configurations or coverage
+are not directly comparable. Even 100 only means no scored findings within checks run.
+
+The JSON `assessment.grade` and each `assessment.domains.*.grade` contain version, score,
+family deductions and explanatory note. Status and grade are complementary: the number
+summarizes accumulated findings; the status highlights the worst observed severity.
+
 
 ## Rules
 
@@ -17,7 +48,7 @@ look better or worse without making them more accurate, so they are no longer pr
 INFO is advice or an observation and does not worsen the assessment. Findings always take
 precedence over missing coverage: an observed critical problem must not disappear behind
 "Not assessed". Counts, affected URLs, severity, evidence and recommendations provide detail
-within each status. Repeated/overlapping observations do not add arithmetic penalties.
+within each status. Repeated observations do not add duplicate arithmetic penalties.
 This rubric is a Ranq reporting policy, not an industry certification or empirical grade.
 
 SEO covers crawl, technical, metadata, structured-data, keyword, indexing and security checks.
@@ -49,8 +80,8 @@ prove it discovered all URLs. Counts of measured URLs do not mean every metric w
 - Field data describes observed real-user performance. For each URL/metric it takes precedence
   over the corresponding lab warning. Partial field data does not suppress unrelated lab
   metrics. Neither data source is a measurement of overall SEO quality.
-- There are no additive deductions: a slow download and poor LCP cannot multiply a percentage
-  penalty. Both may be useful evidence without proving the same root cause.
+- Slow downloads are INFO. Overlapping lab/field performance findings share a grade family;
+  all evidence remains visible even when it adds no further deduction.
 
 ## History and compatibility
 
@@ -59,11 +90,11 @@ lost. A disappearing warning may reflect measurement variation, changed coverage
 detector changes or website changes; it is not proof of remediation. Changed URL sets count
 as a change even when their size is unchanged.
 
-JSON adds `assessment` (version 1) with overall and domain statuses, affected URLs, limitations,
+JSON adds `assessment` (version 2) with overall and domain statuses, affected URLs, limitations,
 and explicit unmeasured rankings/visibility. The old `score`, `domain_scores`, `page_scores`
 score values, `score_breakdown` and comparison delta fields remain for existing consumers.
 `score_deprecated: true` and `score_note` identify them as legacy, unvalidated penalty values.
-New consumers should use `assessment`, page `status`, findings and coverage. The legacy formula
+New consumers should use `assessment.grade`, area grades, page `status`, findings and coverage. The legacy formula
 is unchanged; its continued presence is a compatibility measure, not a recommendation.
 
 ## Validation and references

@@ -6,9 +6,13 @@ Generated {{ r.generated_at }} by Ranq {{ r.version }}
 
 ## Summary
 
+**Ranq custom grade: {{ d.assessment.grade.score ~ "/100" if d.assessment.grade.score is not none else "Not assessed" }}**
+
+{{ d.assessment.grade.note }}
+
 {{ d.assessment.note }}
 
-Findings by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}
+Findings by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.grade.score ~ "/100" if row.grade.score is not none else "Not assessed" }} — {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}
 
 
 {% for note in d.coverage.notes %}

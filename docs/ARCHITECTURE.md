@@ -171,7 +171,7 @@ tests/
    `estimate` flag for heuristics.
 4. **Report** (`report/`): issues are ranked (severity × reach ÷ effort), bucketed into a
    30/60/90-day plan, and rendered to HTML/Markdown/JSON with the limitations section.
-   `report/assessment.py` summarizes observed severity without a numeric grade. Checks record
+   `report/assessment.py` summarizes observed severity alongside an explicitly custom numeric grade. Checks record
    which categories ran; coverage and missing enrichments distinguish "Not assessed" from
    "No issues detected". Performance remains separate from SEO/AEO/GEO readiness.
    Legacy JSON score fields remain deprecated for compatibility. `report/compare.py` reports

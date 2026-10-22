@@ -8,9 +8,10 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 
 ### Changed
 
-- Replace presented percentage grades with simple, severity-based assessments: Critical
-  issues, Needs attention, Minor issues, No issues detected, or Not assessed. Report SEO,
-  AEO, GEO and performance separately, with explicit coverage and unknown visibility.
+- Add an explicitly labeled Ranq custom grade alongside severity-based assessments.
+  Use severity and affected-page coverage, deduplicate repeated checks and overlapping
+  performance observations, and expose every deduction in JSON. Unknown areas are ungraded.
+  Report SEO, AEO, GEO and performance separately with explicit measurement coverage.
 - Retain deprecated JSON score fields for compatibility, but remove them from CLI, HTML,
   Markdown and displayed comparisons. No issues detected is not a verified pass.
 - Treat a single slow crawler download as an informational observation, not a TTFB or

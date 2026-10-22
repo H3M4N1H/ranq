@@ -304,7 +304,10 @@ MIT - see [LICENSE](https://github.com/H3M4N1H/ranq/blob/main/LICENSE).
 
 Ranq reports **Critical issues**, **Needs attention**, **Minor issues**, **No issues detected**,
 or **Not assessed**, with separate SEO/AEO/GEO findings and measurement coverage. These are
-severity summaries, not ranking predictions or percentage grades. Unknown is not a pass.
+severity summaries alongside a **Ranq custom grade /100**. The grade uses severity and
+affected-page coverage, deduplicates overlapping performance findings, and excludes optional
+advice. It is a custom heuristic, not an industry standard or ranking prediction. Unknown
+areas remain unassessed; 100 only means no scored findings in the checks run.
 See [the assessment rules](docs/SCORING.md) for the simple rubric and its limitations.
 
 Terminal audits show a compact summary by default. Use `ranq audit URL --verbose` (or `-v`)

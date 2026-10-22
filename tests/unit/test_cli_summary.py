@@ -80,7 +80,7 @@ def test_compact_model_change_does_not_show_fake_regression(
         {"score": 94, "issues": []}, report.score, report.issues, report.pages
     )
     text = render_summary(monkeypatch, report)
-    assert "Since last audit" in text and "/100" not in text
+    assert "Since last audit" in text and "Ranq custom grade:" in text
     assert "94 -> 78" not in text and "-16" not in text
 
 
