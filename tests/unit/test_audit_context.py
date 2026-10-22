@@ -4,14 +4,21 @@ import json
 
 import pytest
 
+from ranq.analysis import pagetype as pt
 from ranq.analysis.aeo import analyze as analyze_aeo
 from ranq.analysis.aeo import site_eeat
 from ranq.analysis.performance import PerfResult
 from ranq.analysis.structured_data import analyze_page
-from ranq.checks.aeo import eeat_site
+from ranq.checks.aeo import answers, eeat_site
 from ranq.checks.base import AuditContext
-from ranq.checks.geo import ai_crawler_access, brand_consistency, entity_signals
-from ranq.checks.onpage import internal_linking
+from ranq.checks.geo import (
+    ai_crawler_access,
+    brand_consistency,
+    contact_visibility,
+    entity_signals,
+    llms_txt,
+)
+from ranq.checks.onpage import content_depth, headings, internal_linking
 from ranq.checks.performance import core_web_vitals
 from ranq.config import Config, EntityConfig
 from ranq.crawler.crawler import CrawlResult
@@ -19,6 +26,7 @@ from ranq.crawler.parser import parse_html
 from ranq.generators.schema import organization
 from ranq.geo.ai_bots import current_access
 from ranq.geo.analysis import GeoReport
+from ranq.geo.citation import score_pages
 from ranq.geo.entity import analyze, fact_sheet
 from ranq.models import PageData, Severity
 from ranq.robots import RobotsTxt
@@ -242,3 +250,151 @@ def test_description_word_overlap_is_unscored_review_advice() -> None:
     assert issue.severity == Severity.INFO
     assert issue.estimate
     assert "verbatim" not in issue.fix
+
+
+@pytest.mark.parametrize("org_type", ["Organization", "LocalBusiness"])
+def test_graph_entity_facts_and_fact_sheet(org_type: str) -> None:
+    ctx = context(
+        schema={
+            "@context": "https://schema.org",
+            "@graph": [
+                {"@type": "WebSite", "name": "Example"},
+                {
+                    "@type": org_type,
+                    "name": "Example",
+                    "description": "Full company description.",
+                    "foundingDate": "2026",
+                },
+            ],
+        }
+    )
+    # The supplied graph has no logo; preserve that independent finding.
+    assert analyze(ctx.crawl, EntityConfig()).missing_facts == ["logo", "category"]
+    cfg = EntityConfig(logo=URL + "logo.png")
+    ent = analyze(ctx.crawl, cfg)
+    assert ent.missing_facts == ["category"]
+    md, facts = fact_sheet(ctx.crawl, cfg, ent)
+    assert facts["description"] == "Full company description."
+    assert facts["founded"] == "2026"
+    assert "**Description:** Full company description." in md
+    assert "**Founded:** 2026" in md
+
+
+def page_context(path: str, html: str = "") -> AuditContext:
+    ctx = context()
+    url = URL.rstrip("/") + path
+    page = parse_html(PageData(url, url, 200, content_type="text/html"), html, URL)
+    ctx.crawl.pages = {url: page}
+    return ctx
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/work",
+        "/events",
+        "/event/",
+        "/portfolio",
+        "/projects",
+        "/project",
+        "/gallery",
+        "/case-studies",
+        "/WORK/?page=2",
+    ],
+)
+def test_collection_exempts_only_content_heuristics(path: str) -> None:
+    ctx = page_context(
+        path,
+        '<h1 style="opacity:0">Our work</h1><h3>Projects</h3><p>'
+        + "Example project description. " * 20
+        + "</p>"
+        '<a href="/cdn-cgi/l/email-protection">Email</a>',
+    )
+    assert 30 <= ctx.pages[0].word_count <= 100
+    assert "thin-content" not in {i.check_id for i in content_depth(ctx)}
+    assert score_pages(ctx.pages, {}) == []
+    assert {"h1-hidden-in-html", "heading-skip"} <= {i.check_id for i in headings(ctx)}
+    assert "email-obfuscated" in {i.check_id for i in contact_visibility(ctx)}
+    ctx.extras["performance"] = [PerfResult(ctx.pages[0].url, "pagespeed", lab={"LCP": 9000})]
+    assert "lab-cwv-poor" in {i.check_id for i in core_web_vitals(ctx)}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/services/foo",
+        "/events/some-event",
+        "/projects/example",
+        "/work/example",
+        "/blog/example",
+        "/guides/example",
+        "/products/example",
+        "/information",
+    ],
+)
+def test_ordinary_pages_still_checked(path: str) -> None:
+    ctx = page_context(path, "<p>" + "Useful information. " * 30 + "</p>")
+    assert "thin-content" in {i.check_id for i in content_depth(ctx)}
+    assert [s.url for s in score_pages(ctx.pages, {})] == [ctx.pages[0].url]
+
+
+def test_collection_schema_is_page_level_and_article_takes_precedence() -> None:
+    ctx = context(schema={"@graph": [{"@type": "CollectionPage"}]})
+    assert pt.is_collection(ctx.pages[0])
+    ctx = context(schema={"@type": "WebPage", "isPartOf": {"@type": "CollectionPage"}})
+    assert not pt.is_collection(ctx.pages[0])
+    ctx = page_context("/work")
+    ctx.pages[0].json_ld = ['{"@type": "Article"}']
+    assert not pt.is_collection(ctx.pages[0])
+
+
+@pytest.mark.parametrize(
+    "path,legal",
+    [
+        ("/privacy", True),
+        ("/privacy-policy/", True),
+        ("/privacy.html", True),
+        ("/terms-of-service", True),
+        ("/terms-of-use.htm", True),
+        ("/tos", True),
+        ("/legal", True),
+        ("/imprint", True),
+        ("/impressum", True),
+        ("/cookie-policy", True),
+        ("/faq", False),
+        ("/privacy/tools", False),
+    ],
+)
+def test_legal_answer_length_and_citation_scope(path: str, legal: bool) -> None:
+    ctx = page_context(
+        path,
+        "<h2>How do we use data?</h2><p>"
+        + "We process information to provide services. " * 20
+        + "</p>",
+    )
+    ctx.extras["aeo"] = analyze_aeo(ctx.pages, None)
+    assert ctx.extras["aeo"].pages[0].qa
+    assert ("aeo-answer-length" in {i.check_id for i in answers(ctx)}) is not legal
+    assert bool(score_pages(ctx.pages, {})) is not legal
+    assert "h1-missing" in {i.check_id for i in headings(ctx)}
+
+
+def test_optional_geo_guidance_is_info() -> None:
+    ctx = context()
+    ctx.crawl.robots = RobotsTxt("User-agent: *\nAllow: /\n")
+    ctx.extras["geo"] = GeoReport(
+        bots=current_access(ctx.crawl.robots, URL),
+        llms_txt_status=404,
+        entity=analyze(ctx.crawl, EntityConfig()),
+    )
+    issues = {
+        i.check_id: i for check in (ai_crawler_access, llms_txt, entity_signals) for i in check(ctx)
+    }
+    for name in (
+        "ai-policy-implicit",
+        "llms-txt-missing",
+        "entity-no-sameas",
+        "entity-facts-missing",
+    ):
+        assert issues[name].severity == Severity.INFO
+    assert "ai-search-bots-blocked" not in issues
