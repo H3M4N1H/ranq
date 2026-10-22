@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from urllib.parse import unquote, urljoin, urlsplit
+from urllib.parse import quote, unquote, urljoin, urlsplit
 
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 from selectolax.lexbor import LexborNode as Node
@@ -195,6 +195,31 @@ def parse_html(page: PageData, html: str, site: str) -> PageData:
         for t in tree.css("time")
         if t.attributes.get("datetime") or t.text()
     ]
+
+    # Semantic sections can exist without native fragment navigation (e.g. JS scroll).
+    # Require body content beyond headings/link labels; do not infer from an ID alone.
+    section_tree = HTMLParser(html)
+    for node in section_tree.css(NON_CONTENT + ", nav, [role=navigation]"):
+        node.decompose()
+    page.content_sections = []
+    for node in section_tree.css("section[id], [role=region][id]"):
+        ancestor: Node | None = node
+        hidden = False
+        while ancestor is not None:
+            if (
+                "hidden" in ancestor.attributes
+                or ancestor.attributes.get("aria-hidden") == "true"
+                or _inline_hidden(ancestor)
+            ):
+                hidden = True
+                break
+            ancestor = ancestor.parent
+        body = " ".join(clean(n.text(separator=" ")) for n in node.css("p, li, address, form"))
+        section_id = node.attributes.get("id")
+        if not hidden and section_id and len(body.split()) >= 8:
+            page.content_sections.append(
+                f"{normalize(page.final_url)}#{quote(section_id, safe='')}"
+            )
 
     # Mixed content: http:// subresources on an https page
     if page.final_url.startswith("https://"):

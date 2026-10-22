@@ -398,3 +398,36 @@ def test_optional_geo_guidance_is_info() -> None:
     ):
         assert issues[name].severity == Severity.INFO
     assert "ai-search-bots-blocked" not in issues
+
+
+def test_substantive_sections_without_fragment_navigation() -> None:
+    ctx = context("""
+        <a href="/">About</a><button>Contact</button>
+        <section id="about"><h2>Our studio</h2>
+          <p>We are an independent studio building secure products for local businesses.</p>
+        </section>
+        <section id="contact"><h2>Contact us</h2>
+          <p>Discuss your project with our team by emailing hello@example.test today.</p>
+        </section>
+    """)
+    assert ctx.pages[0].section_links == []
+    assert site_eeat(ctx.pages).about == URL + "#about"
+    assert site_eeat(ctx.pages).contact == URL + "#contact"
+    ctx.extras["aeo"] = analyze_aeo(ctx.pages, None)
+    assert {i.check_id for i in eeat_site(ctx)} == {"eeat-no-privacy"}
+
+
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<section id="about"></section>',
+        '<section id="about"><h2>About our talented and experienced local team today</h2></section>',
+        '<nav id="about">About our talented and experienced local team today</nav>',
+        '<section id="about"><script>About our talented and experienced local team today</script></section>',
+        '<section id="about" hidden><p>We build secure products for local businesses around the world.</p></section>',
+        '<div aria-hidden="true"><section id="about"><p>We build secure products for local businesses around the world.</p></section></div>',
+        '<section id="about-more"><p>We build secure products for local businesses around the world.</p></section>',
+    ],
+)
+def test_section_labels_and_hidden_content_are_not_trust_evidence(html: str) -> None:
+    assert site_eeat(context(html).pages).about is None

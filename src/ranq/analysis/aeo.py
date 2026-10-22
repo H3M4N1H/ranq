@@ -232,11 +232,21 @@ def site_eeat(pages: list[PageData]) -> SiteEEAT:
     site = SiteEEAT()
     known = {link.url for p in pages for link in p.internal_links} | {p.url for p in pages}
     sections = sorted({url for p in pages for url in p.section_links})
+    content_sections = sorted({url for p in pages for url in p.content_sections})
     for key, pattern in SITE_PAGES.items():
         match = next((u for u in sorted(known) if pattern.search(urlsplit(u).path)), None)
         if match is None:
             match = next(
                 (u for u in sections if pattern.search("/" + unquote(urlsplit(u).fragment))),
+                None,
+            )
+        if match is None and key in ("about", "contact"):
+            match = next(
+                (
+                    u
+                    for u in content_sections
+                    if pattern.fullmatch("/" + unquote(urlsplit(u).fragment))
+                ),
                 None,
             )
         setattr(site, key, match)
