@@ -53,7 +53,8 @@ This rubric is a Ranq reporting policy, not an industry certification or empiric
 
 SEO covers crawl, technical, metadata, structured-data, keyword, indexing and security checks.
 AEO covers answer-extraction and E-E-A-T checks. GEO covers entity/citation/crawler checks.
-Performance has a separate assessment, while its actionable findings also affect the overall
+Hidden initial H1s belong to SEO (on-page), whether or not they also delay painting.
+Performance has a separate numeric grade and assessment, while its actionable findings also affect the overall
 summary. These groups are convenient organization, not proof that a concern affects only one
 search channel. Actual search rankings and AI visibility remain **Not measured** by an audit.
 

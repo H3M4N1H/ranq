@@ -7,7 +7,8 @@ from ranq.report.scoring import custom_grade
 
 ASSESSMENT_NOTE = (
     "Assessment reflects detected issues, not a percentage of SEO quality. "
-    "No issues detected is not proof of readiness; untested areas remain unknown. "
+    "100 means no scored findings in the automated checks run, not verified readiness. "
+    "Untested areas remain unknown. The overall grade combines deductions, not area averages. "
     "Search rankings and actual AI visibility are not measured by this audit."
 )
 

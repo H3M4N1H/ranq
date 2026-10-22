@@ -4,6 +4,16 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Classify hidden initial H1 findings under on-page SEO; do not imply that the markup alone
+  proves an LCP failure. Keep detection and severity unchanged.
+- Show Performance's numeric grade alongside SEO, AEO and GEO. Label these as automated
+  checks and explain that 100 means no scored findings in checks run, not verified readiness.
+  Clarify that the overall grade combines deductions rather than averaging area grades.
+
 ## [0.5.0] - 2026-10-22
 
 ### Changed

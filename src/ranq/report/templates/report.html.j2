@@ -74,7 +74,7 @@ a{color:var(--accent)}
 <p><strong>Ranq custom grade: {{ d.assessment.grade.score ~ "/100" if d.assessment.grade.score is not none else "Not assessed" }}</strong></p>
 <p>{{ d.assessment.grade.note }}</p>
 <p>{{ d.assessment.note }}</p>
-<p>Findings by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.grade.score ~ "/100" if row.grade.score is not none else "Not assessed" }} — {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}</p>
+<p>Automated checks by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.grade.score ~ "/100" if row.grade.score is not none else "Not assessed" }} — {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}</p>
 {% for note in d.coverage.notes %}<p>{{ note }}</p>{% endfor %}
 
 <nav class="tabs" role="tablist">

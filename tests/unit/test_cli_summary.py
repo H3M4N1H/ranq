@@ -90,3 +90,27 @@ def test_info_only_summary_does_not_suggest_actionable_problems(
     report = sample_report()
     report.issues = report.issues[1:]
     assert "No actionable findings" in render_summary(monkeypatch, report)
+
+
+@pytest.mark.parametrize("verbose", [False, True])
+def test_all_four_area_grades_and_scope_are_visible(
+    monkeypatch: pytest.MonkeyPatch, verbose: bool
+) -> None:
+    report = sample_report()
+    report.coverage["assessed_domains"] = ["SEO", "AEO", "GEO", "Performance"]
+    report.issues.append(
+        Issue("lab-cwv-poor", "Poor LCP", Severity.MEDIUM, "performance", "", "", urls=["a", "b"])
+    )
+    text = render_summary(monkeypatch, report, verbose=verbose)
+    assert "Automated checks:" in text
+    for area, score in (("SEO", 91), ("AEO", 100), ("GEO", 100), ("Performance", 91)):
+        assert f"{area}: {score}/100" in text
+    normalized = " ".join(text.split())
+    assert "100 = no scored findings in checks run" in normalized
+    assert "overall combines deductions, not area averages" in normalized
+
+
+def test_missing_performance_does_not_show_perfect_grade(monkeypatch: pytest.MonkeyPatch) -> None:
+    text = render_summary(monkeypatch, sample_report())
+    assert "Performance: Not assessed" in text
+    assert "Performance: 100" not in text

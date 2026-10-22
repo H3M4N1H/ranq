@@ -179,16 +179,16 @@ def headings(ctx: AuditContext) -> Iterator[Issue]:
             "h1-hidden-in-html",
             f"{len(hidden)} page(s) serve their H1 invisible (revealed only by JavaScript)",
             Severity.MEDIUM,
-            Category.PERFORMANCE,
+            OP,
             "The main heading is in the HTML but styled invisible inline (opacity:0, "
             "visibility:hidden or display:none), typically by an entrance animation. Browsers do "
-            "not count invisible text as painted, so Largest Contentful Paint waits for "
-            "JavaScript to download, hydrate and run the animation, and crawlers that do not run "
-            "scripts see hidden text.",
+            "not count invisible text as painted. The heading is unavailable until scripts reveal "
+            "it; this may also delay LCP if the heading is the largest content element. "
+            "This finding does not establish a measured performance failure.",
             "Server-render the heading in its final, visible state. Animate only transform (not "
             "opacity or blur), use a CSS @keyframes animation that starts on first paint, or "
             "disable the initial state for the hero (e.g. Framer Motion initial={false}).",
-            impact="Slower LCP, which is a Core Web Vitals metric.",
+            impact="The main heading is hidden in the initial HTML.",
             effort=Effort.LOW,
             urls=hidden,
             source=sources.CORE_WEB_VITALS,
