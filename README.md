@@ -1,14 +1,28 @@
 # Ranq
 
 [![CI](https://github.com/H3M4N1H/ranq/actions/workflows/ci.yml/badge.svg)](https://github.com/H3M4N1H/ranq/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
+[![PyPI](https://img.shields.io/pypi/v/ranq.svg)](https://pypi.org/project/ranq/)
+[![Python](https://img.shields.io/pypi/pyversions/ranq.svg)](https://pypi.org/project/ranq/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/H3M4N1H/ranq/blob/main/LICENSE)
 
 **Free, open-source CLI that audits and optimizes websites for search engines (SEO), answer
-engines (AEO) and AI / generative engines (GEO) - and submits them to every index it
-legitimately can.**
+engines (AEO) and generative AI engines such as ChatGPT search, Perplexity and Claude (GEO) -
+and submits them to every index it legitimately can.**
 
-No paid APIs. No accounts required for the core audit. MIT licensed.
+```bash
+pipx install ranq                 # or: pip install ranq
+ranq audit https://your-site.com
+```
+
+![Ranq auditing a live site, then listing which AI crawlers can access it](https://raw.githubusercontent.com/H3M4N1H/ranq/main/docs/demo.gif)
+
+*A live audit of nodekraft.tech, then its AI-crawler access table. Network waits are
+time-lapsed; regenerate with [`scripts/record_demo.py`](https://github.com/H3M4N1H/ranq/blob/main/scripts/record_demo.py).*
+
+No paid APIs. No accounts required for the core audit. MIT licensed. One command gives you a
+prioritized report covering technical SEO, Core Web Vitals, structured data, answer-engine
+readiness and AI-crawler access; a second generates the fixes (robots.txt, sitemap, llms.txt,
+JSON-LD, redirects) for your stack.
 
 Built and maintained by [NodeKraft](https://nodekraft.tech), a security-first digital agency in
 Chennai. Want the findings fixed for you? [Talk to us](https://nodekraft.tech).
@@ -23,14 +37,17 @@ Chennai. Want the findings fixed for you? [Talk to us](https://nodekraft.tech).
 ranq audit https://example.com          # crawl + prioritized HTML/Markdown/JSON report
 ranq fix https://example.com            # robots.txt, sitemap, llms.txt, JSON-LD, redirects...
 ranq diagnose https://example.com/page  # why isn't this URL indexed?
+ranq geo bots https://example.com       # which AI crawlers can access the site
 ```
 
-![Ranq HTML report](docs/report-screenshot.png)
+![Ranq HTML report](https://raw.githubusercontent.com/H3M4N1H/ranq/main/docs/report-screenshot.png)
 
 *The HTML report for the bundled test site, which has planted problems. Open the full
-[example report](docs/example-report/report.html) (download it and open it in a browser) or
-read the [Markdown version](docs/example-report/report.md). Changes between versions are in
-the [CHANGELOG](CHANGELOG.md).*
+[example report](https://github.com/H3M4N1H/ranq/blob/main/docs/example-report/report.html)
+(download it and open it in a browser) or read the
+[Markdown version](https://github.com/H3M4N1H/ranq/blob/main/docs/example-report/report.md).
+Changes between versions are in the
+[CHANGELOG](https://github.com/H3M4N1H/ranq/blob/main/CHANGELOG.md).*
 
 ## What it does
 
@@ -192,7 +209,7 @@ Audit every deploy and upload the report as an artifact (see `docs/github-action
 
 Checks are plain functions registered with `@check`. Ship them in any module and list it under
 `plugins:` or expose it via the `ranq.checks` entry-point group. See
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and `tests/plugins/demo_plugin.py`.
+[`docs/ARCHITECTURE.md`](https://github.com/H3M4N1H/ranq/blob/main/docs/ARCHITECTURE.md) and `tests/plugins/demo_plugin.py`.
 
 ## Ethics
 
@@ -252,6 +269,7 @@ pre-commit install
 pytest -q                      # spins up a local test site with planted issues
 ruff check src tests && ruff format --check src tests && mypy
 python tests/serve_site.py 8765 & ranq audit http://127.0.0.1:8765 --no-pagespeed --delay 0
+python scripts/record_demo.py https://nodekraft.tech   # README GIF; needs agg on PATH
 ```
 
 ### Releasing
@@ -267,6 +285,17 @@ environment `pypi`. Then in the GitHub repository settings add the variable
 `PUBLISH_TO_PYPI` = `true` (*Settings -> Secrets and variables -> Actions -> Variables*).
 Until then the PyPI job is skipped and releases go to GitHub only.
 
+## Contributing
+
+Bug reports, false positives and pull requests are welcome. A wrong finding is a bug: if Ranq
+flags something that is correct on your site, [open a false-positive report](https://github.com/H3M4N1H/ranq/issues/new?template=false_positive.yml)
+with the URL and what you expected. New to the codebase? Start with an issue labelled
+[good first issue](https://github.com/H3M4N1H/ranq/labels/good%20first%20issue); most checks
+are a single function with a test. See
+[CONTRIBUTING.md](https://github.com/H3M4N1H/ranq/blob/main/CONTRIBUTING.md) for setup, the
+check API and the review bar, and report vulnerabilities privately as described in
+[SECURITY.md](https://github.com/H3M4N1H/ranq/blob/main/SECURITY.md).
+
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT - see [LICENSE](https://github.com/H3M4N1H/ranq/blob/main/LICENSE).

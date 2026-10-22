@@ -1,0 +1,57 @@
+name: False positive
+description: Ranq flagged something that is correct on your site.
+title: "[False positive] <check id>: "
+labels: ["bug", "false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong finding is a bug, and these reports are the fastest way to make Ranq trustworthy.
+        The check id is the `check_id` field in `ranq-report/report.json`.
+  - type: input
+    id: check
+    attributes:
+      label: Check id
+      placeholder: e.g. h1-hidden-in-html
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Affected URL
+      description: Leave blank if the site is private and paste HTML below instead.
+      placeholder: https://example.com/page
+  - type: textarea
+    id: finding
+    attributes:
+      label: What Ranq reported
+      description: Paste the finding from the report (title, description, evidence).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Why it is wrong
+      description: What is actually on the page, and a link to the guideline if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: html
+    attributes:
+      label: Minimal HTML that reproduces it
+      description: Optional, but it lets us add a regression test straight away.
+      render: html
+  - type: input
+    id: version
+    attributes:
+      label: Ranq version
+      description: Output of `ranq --version`.
+      placeholder: ranq 0.4.0
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: ranq audit https://example.com --render

@@ -12,8 +12,9 @@ requires-python = ">=3.11"
 authors = [{ name = "NodeKraft" }]
 maintainers = [{ name = "H3M4N1H" }]
 keywords = [
-  "seo", "aeo", "geo", "llms.txt", "indexnow", "audit", "crawler", "structured-data",
-  "json-ld", "core-web-vitals", "search-console", "ai-search",
+  "seo", "aeo", "geo", "generative-engine-optimization", "answer-engine-optimization",
+  "technical-seo", "seo-audit", "ai-search", "ai-crawlers", "llms.txt", "indexnow", "crawler",
+  "structured-data", "json-ld", "core-web-vitals", "search-console", "cli",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
