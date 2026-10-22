@@ -303,3 +303,5 @@ MIT - see [LICENSE](https://github.com/H3M4N1H/ranq/blob/main/LICENSE).
 ### Understanding the score
 
 Ranq reports **automated audit health**, with separate SEO/AEO/GEO findings scores and measurement coverage. It does not measure rankings or actual AI visibility. See [the scoring model](docs/SCORING.md) for weights, calibration scenarios, and comparison limitations.
+
+Terminal audits show a compact summary by default. Use `ranq audit URL --verbose` (or `-v`) for per-page scores, informational notes, detailed comparisons and all report paths. HTML, Markdown and JSON reports always retain the full detail.

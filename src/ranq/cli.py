@@ -190,6 +190,14 @@ def audit(
     no_compare: Annotated[
         bool, typer.Option("--no-compare", help="Do not compare with the previous report.")
     ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Show page scores, optional advice, coverage details and comparison history.",
+        ),
+    ] = False,
 ) -> None:
     """Crawl a site and produce a prioritized SEO/AEO/GEO report."""
     config = _load(config_path)
@@ -248,9 +256,13 @@ def audit(
             err.print(f"[yellow]{compare_to} is not a Ranq report for {site}; skipped.[/yellow]")
     paths = write_reports(report, out_dir, formats)
     paths.append(_archive(report, out_dir))
-    _print_summary(report)
-    for p in paths:
-        console.print(f"  wrote {p}")
+    _print_summary(report, verbose=verbose)
+    if verbose:
+        for p in paths:
+            console.print(f"  wrote {p}")
+    else:
+        primary = next((p for p in paths if p.name == "report.html"), paths[0])
+        console.print(f"\nReport: {escape(str(primary))}")
     threshold = fail_on or config.report.fail_on
     if threshold and threshold != "never":
         limit = Severity(threshold).rank
@@ -272,9 +284,18 @@ def _archive(report: Report, out_dir: Path) -> Path:
     return path
 
 
-def _print_comparison(report: Report) -> None:
+def _print_comparison(report: Report, *, verbose: bool = False) -> None:
     cmp = report.comparison
     if cmp is None:
+        return
+    if not verbose:
+        if cmp.delta is None:
+            console.print(f"[dim]Comparison: {escape(cmp.comparison_note)}[/dim]")
+        else:
+            console.print(
+                f"[dim]Since last audit: {cmp.delta:+d} points · {len(cmp.new)} new · "
+                f"{len(cmp.fixed)} no longer reported · {len(cmp.changed)} changed[/dim]"
+            )
         return
     delta = cmp.delta
     change = (
@@ -295,27 +316,39 @@ def _print_comparison(report: Report) -> None:
         console.print(f"  [yellow]changed[/yellow] {c.title} ({c.before} -> {c.after} URLs)")
 
 
-def _print_summary(report: Report) -> None:
+def _print_summary(report: Report, *, verbose: bool = False) -> None:
     counts = report.severity_counts
+    count_text = (
+        " · ".join(f"{counts[s]} {s}" for s in ("critical", "high", "medium", "low") if counts[s])
+        or "No scored findings"
+    )
     console.print(
-        f"\nAutomated audit health [bold]{report.score}/100[/bold] (heuristic estimate) · "
-        f"{report.stats['html_pages']} HTML pages · "
-        f"[red]{counts['critical']} critical[/red] · [dark_orange]{counts['high']} high[/dark_orange] · "
-        f"[yellow]{counts['medium']} medium[/yellow] · [green]{counts['low']} low[/green]"
+        f"\nAutomated audit health [bold]{report.score}/100[/bold] · "
+        f"{report.stats['html_pages']} pages · {count_text}"
     )
     if report.domain_scores:
         console.print(
-            "Findings by area: "
-            + " · ".join(
-                f"{name} {row['score']}/100 ({row['scored_findings']} scored findings)"
-                for name, row in report.domain_scores.items()
-            )
+            "[dim]Findings: "
+            + " · ".join(f"{name} {row['score']}/100" for name, row in report.domain_scores.items())
+            + "[/dim]"
         )
-    for note in report.coverage.get("notes", []):
-        console.print(escape(note))
-    _print_comparison(report)
-    if report.stats.get("framework"):
-        console.print(f"[dim]Detected: {report.stats['framework']}[/dim]")
+    coverage = report.coverage
+    if verbose:
+        for note in coverage.get("notes", []):
+            console.print(escape(note))
+    elif coverage:
+        total = coverage.get("html_pages", 0)
+        console.print(
+            f"[dim]Coverage: lab {coverage.get('lab_pages', 0)}/{total} · "
+            f"field {coverage.get('field_pages', 0)}/{total} · "
+            f"rendered {coverage.get('rendered_pages', 0)}/{total} pages[/dim]"
+        )
+        # Never hide incomplete-crawl, disabled-check or measurement-failure warnings.
+        for note in coverage.get("notes", [])[2:]:
+            console.print(f"[yellow]{escape(note)}[/yellow]")
+    _print_comparison(report, verbose=verbose)
+    if verbose and report.stats.get("framework"):
+        console.print(f"[dim]Detected: {escape(report.stats['framework'])}[/dim]")
     if report.stats.get("render_error"):
         console.print(
             f"[yellow]JS rendering skipped: {escape(report.stats['render_error'])}[/yellow]"
@@ -331,14 +364,20 @@ def _print_summary(report: Report) -> None:
         "low": "green",
         "info": "dim",
     }
-    for issue in report.issues[:15]:
+    shown = report.issues if verbose else [i for i in report.issues if i.severity != Severity.INFO]
+    for issue in shown[:15]:
         sev = issue.severity.value
         table.add_row(f"[{colors[sev]}]{sev}[/{colors[sev]}]", issue.title, str(len(issue.urls)))
-    if report.issues:
+    if shown:
+        console.print()
         console.print(table)
-    if len(report.issues) > 15:
-        console.print(f"  ... {len(report.issues) - 15} more in the report")
-    if report.pages:
+    if len(shown) > 15:
+        console.print(f"  ... {len(shown) - 15} more in the report")
+    if not verbose and counts["info"]:
+        console.print(
+            f"[dim]{counts['info']} informational notes in the report (no score impact).[/dim]"
+        )
+    if verbose and report.pages:
         pages = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
         pages.add_column("Page score", justify="right")
         pages.add_column("Page")
@@ -353,7 +392,12 @@ def _print_summary(report: Report) -> None:
         console.print(pages)
         if len(report.pages) > 15:
             console.print(f"  ... {len(report.pages) - 15} more pages in the report")
-    console.print(f"[dim]{DISCLAIMER}[/dim]")
+    if verbose:
+        console.print(f"[dim]{DISCLAIMER}[/dim]")
+    else:
+        console.print(
+            "[dim]Estimate of detected issues, not rankings or AI visibility. Details: --verbose[/dim]"
+        )
 
 
 @app.command()
