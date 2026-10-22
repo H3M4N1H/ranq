@@ -174,7 +174,8 @@ tests/
    The health score is `100 × e^(−penalty/100)`: site-wide issues (`Issue.site_wide`) count
    in full, page-level issues scale with the share of pages affected, and every page also
    gets its own score. `report/compare.py` diffs the run against the previous `report.json`
-   for the same site.
+   for the same site. Scoring version 2 uses full severity weights and suppresses score deltas
+   across scoring-model or coverage changes. See [SCORING.md](SCORING.md).
 
 ## Plugins
 

@@ -299,3 +299,7 @@ check API and the review bar, and report vulnerabilities privately as described 
 ## License
 
 MIT - see [LICENSE](https://github.com/H3M4N1H/ranq/blob/main/LICENSE).
+
+### Understanding the score
+
+Ranq reports **automated audit health**, with separate SEO/AEO/GEO findings scores and measurement coverage. It does not measure rankings or actual AI visibility. See [the scoring model](docs/SCORING.md) for weights, calibration scenarios, and comparison limitations.

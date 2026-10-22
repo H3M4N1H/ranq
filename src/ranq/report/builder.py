@@ -14,6 +14,7 @@ from ranq.checks.base import AuditContext
 from ranq.models import Effort, Issue, Severity
 from ranq.report.compare import Comparison
 from ranq.report.limitations import DISCLAIMER, LIMITATIONS, SCOPE_NOTES
+from ranq.report.scoring import SCORE_NOTE, SCORING_VERSION
 
 STANDING_TASKS = {
     "30": [
@@ -50,6 +51,9 @@ class Report:
     plan: dict[str, list[dict[str, Any]]]
     score: int
     pages: list[dict[str, Any]] = field(default_factory=list)  # per-page scores, worst first
+    coverage: dict[str, Any] = field(default_factory=dict)
+    score_breakdown: list[dict[str, Any]] = field(default_factory=list)
+    domain_scores: dict[str, Any] = field(default_factory=dict)
     comparison: Comparison | None = None  # vs a previous audit of the same site
     extras: dict[str, Any] = field(default_factory=dict)
     disclaimer: str = DISCLAIMER
@@ -68,10 +72,11 @@ class Report:
             "generated_at": self.generated_at,
             "version": self.version,
             "score": self.score,
-            "score_note": "Heuristic health score (estimate): 100 * e^(-penalty/100) over weighted "
-            "issue penalties. "
-            "Site-wide issues count in full; page-level issues scale with the share of pages "
-            "affected. Page scores use only that page's own issues.",
+            "score_note": SCORE_NOTE,
+            "scoring_version": SCORING_VERSION,
+            "coverage": self.coverage,
+            "score_breakdown": self.score_breakdown,
+            "domain_scores": self.domain_scores,
             "page_scores": self.pages,
             "comparison": self.comparison.to_dict() if self.comparison else None,
             "stats": self.stats,
@@ -86,14 +91,14 @@ class Report:
 
 
 def _penalty(issue: Issue, fraction: float) -> float:
-    return issue.severity.weight * (0.3 + 0.7 * fraction) / 4
+    return issue.severity.weight * (0.3 + 0.7 * fraction)
 
 
 def _to_score(penalty: float) -> int:
     """Diminishing curve: small penalties cost about their face value (a penalty of 10 gives
     90), large ones approach 0 without reaching it, so very bad sites stay comparable and
     only an unreachable site scores 0."""
-    return round(100 * math.exp(-penalty / 100))
+    return max(1, round(100 * math.exp(-penalty / 100)))
 
 
 def health_score(issues: list[Issue], page_count: int) -> int:
@@ -102,16 +107,46 @@ def health_score(issues: list[Issue], page_count: int) -> int:
     dilute them."""
     if page_count == 0:
         return 0  # nothing could be audited; see the site-unreachable issue
-    penalty = 0.0
+    return _to_score(sum(row["penalty"] for row in score_breakdown(issues, page_count)))
+
+
+def score_breakdown(issues: list[Issue], page_count: int) -> list[dict[str, Any]]:
+    """Expose every contribution so the score can be reproduced from report.json."""
+    rows = []
     for issue in issues:
-        if issue.site_wide:
-            fraction = 1.0
-        elif issue.urls:
-            fraction = min(len(issue.urls), page_count) / page_count
-        else:
-            fraction = 0.0
-        penalty += _penalty(issue, fraction)
-    return _to_score(penalty)
+        fraction = (
+            1.0 if issue.site_wide else min(len(set(issue.urls)), page_count) / max(page_count, 1)
+        )
+        rows.append(
+            {
+                "check_id": issue.check_id,
+                "severity": issue.severity.value,
+                "weight": issue.severity.weight,
+                "affected_share": fraction,
+                "site_wide": issue.site_wide,
+                "penalty": _penalty(issue, fraction),
+            }
+        )
+    return rows
+
+
+def domain_scores(issues: list[Issue], page_count: int) -> dict[str, Any]:
+    """Disjoint groups explain the overall penalty without counting a finding twice."""
+    groups: dict[str, list[Issue]] = {"SEO": [], "AEO": [], "GEO": []}
+    for issue in issues:
+        domain = (
+            "GEO"
+            if issue.category == "geo"
+            else ("AEO" if issue.category in ("aeo", "e-e-a-t") else "SEO")
+        )
+        groups[domain].append(issue)
+    return {
+        name: {
+            "score": health_score(group, page_count),
+            "scored_findings": sum(i.severity != Severity.INFO for i in group),
+        }
+        for name, group in groups.items()
+    }
 
 
 def page_scores(issues: list[Issue], page_urls: list[str]) -> list[dict[str, Any]]:
@@ -212,7 +247,44 @@ def build_report(ctx: AuditContext, issues: list[Issue]) -> Report:
         score=health_score(issues, len(html_pages)),
         pages=page_scores(issues, [p.url for p in html_pages]),
         extras=extras,
+        coverage=audit_coverage(ctx),
+        score_breakdown=score_breakdown(issues, len(html_pages)),
+        domain_scores=domain_scores(issues, len(html_pages)),
     )
+
+
+def audit_coverage(ctx: AuditContext) -> dict[str, Any]:
+    """Report observed coverage separately; lack of measurements is not a site defect."""
+    urls = {p.url for p in ctx.pages}
+    perf = ctx.extras.get("performance", [])
+    lab = {r.url for r in perf if r.lab or r.performance_score is not None} & urls
+    field_urls = {r.url for r in perf if r.field_data} & urls
+    rendered = sum(p.rendered for p in ctx.pages)
+    notes = [
+        f"{len(urls)} HTML page(s) audited; lab performance: {len(lab)}/{len(urls)}; "
+        f"field performance: {len(field_urls)}/{len(urls)}; browser rendered: {rendered}/{len(urls)}.",
+        "Findings scores only: rankings and actual AI mentions/citations are not measured. "
+        "Undiscovered pages and unmeasured checks are not verified. "
+        "100 means no scored findings in this audit, not perfect SEO.",
+    ]
+    if ctx.crawl.truncated:
+        notes.append("Crawl stopped at the page limit; this is a partial audit.")
+    if ctx.config.disabled_checks:
+        notes.append("Disabled checks: " + ", ".join(ctx.config.disabled_checks))
+    if any(r.error for r in perf):
+        notes.append("Some performance requests failed; missing results are not passes.")
+    return {
+        "audited_urls": sorted(urls),
+        "lab_urls": sorted(lab),
+        "field_urls": sorted(field_urls),
+        "html_pages": len(urls),
+        "lab_pages": len(lab),
+        "field_pages": len(field_urls),
+        "rendered_pages": rendered,
+        "truncated": ctx.crawl.truncated,
+        "disabled_checks": list(ctx.config.disabled_checks),
+        "notes": notes,
+    }
 
 
 def _plain(value: Any) -> Any:

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ranq.models import Issue
+from ranq.report.scoring import SCORING_VERSION
 from ranq.urls import same_site
 
 
@@ -33,6 +34,8 @@ class Comparison:
     previous_generated_at: str
     previous_score: int
     score: int
+    scores_comparable: bool = True
+    comparison_note: str = ""
     fixed: list[IssueChange] = field(default_factory=list)
     new: list[IssueChange] = field(default_factory=list)
     changed: list[IssueChange] = field(default_factory=list)  # still present, scope changed
@@ -40,8 +43,8 @@ class Comparison:
     pages: list[PageChange] = field(default_factory=list)
 
     @property
-    def delta(self) -> int:
-        return self.score - self.previous_score
+    def delta(self) -> int | None:
+        return self.score - self.previous_score if self.scores_comparable else None
 
     def to_dict(self) -> dict[str, Any]:
         return {**asdict(self), "delta": self.delta}
@@ -64,6 +67,7 @@ def compare(
     score: int,
     issues: list[Issue],
     page_scores: list[dict[str, Any]],
+    coverage: dict[str, Any] | None = None,
 ) -> Comparison:
     before = {i["check_id"]: i for i in previous.get("issues", []) if "check_id" in i}
     after = {i.check_id: i for i in issues}
@@ -71,7 +75,23 @@ def compare(
         previous_generated_at=str(previous.get("generated_at", "")),
         previous_score=int(previous.get("score", 0)),
         score=score,
+        scores_comparable=previous.get("scoring_version") == SCORING_VERSION,
     )
+    if not result.scores_comparable:
+        result.comparison_note = "Scoring model changed; scores are not comparable."
+    elif coverage is not None:
+        prior = previous.get("coverage", {})
+        keys = (
+            "audited_urls",
+            "lab_urls",
+            "field_urls",
+            "rendered_pages",
+            "truncated",
+            "disabled_checks",
+        )
+        if any(prior.get(k) != coverage.get(k) for k in keys):
+            result.scores_comparable = False
+            result.comparison_note = "Audit coverage changed; scores are not directly comparable."
     for cid, old in before.items():
         if cid not in after:
             result.fixed.append(
@@ -101,7 +121,7 @@ def compare(
         else:
             result.unchanged += 1
     old_pages = {p["url"]: p["score"] for p in previous.get("page_scores", []) if "url" in p}
-    if old_pages:
+    if old_pages and result.scores_comparable:
         new_pages = {p["url"]: p["score"] for p in page_scores}
         for url in sorted(old_pages.keys() | new_pages.keys()):
             b, a = old_pages.get(url), new_pages.get(url)

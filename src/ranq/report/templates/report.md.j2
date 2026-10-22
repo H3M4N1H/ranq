@@ -6,9 +6,18 @@ Generated {{ r.generated_at }} by Ranq {{ r.version }}
 
 ## Summary
 
+{{ d.score_note }}
+
+Findings by area: {% for name, row in d.domain_scores.items() %}{{ name }} {{ row.score }}/100 ({{ row.scored_findings }} scored findings){% if not loop.last %} · {% endif %}{% endfor %}
+
+
+{% for note in d.coverage.notes %}
+- {{ note }}
+{% endfor %}
+
 | Metric | Value |
 |---|---|
-| Health score (heuristic estimate) | **{{ r.score }}/100** |
+| Automated audit health (heuristic estimate) | **{{ r.score }}/100** |
 {% for k, v in r.stats.items() %}
 | {{ k.replace('_', ' ') }} | {{ v }} |
 {% endfor %}
@@ -21,13 +30,13 @@ Generated {{ r.generated_at }} by Ranq {{ r.version }}
 {% set c = d.comparison %}
 ## Changes since {{ c.previous_generated_at }}
 
-Score **{{ c.previous_score }} -> {{ c.score }}** ({{ '+' if c.delta > 0 else '' }}{{ c.delta }}) · {{ c.fixed|length }} fixed · {{ c.new|length }} new · {{ c.changed|length }} changed · {{ c.unchanged }} unchanged
+Score **{{ c.previous_score }} -> {{ c.score }}** ({% if c.delta is not none %}{{ '+' if c.delta > 0 else '' }}{{ c.delta }}{% else %}{{ c.comparison_note }}{% endif %}) · {{ c.fixed|length }} no longer reported · {{ c.new|length }} new · {{ c.changed|length }} changed · {{ c.unchanged }} unchanged
 
 {% if c.fixed or c.new or c.changed %}
 | Status | Severity | Issue | URLs before -> now |
 |---|---|---|---|
 {% for i in c.fixed %}
-| fixed | {{ i.severity }} | {{ i.title }} | {{ i.before }} -> 0 |
+| no longer reported | {{ i.severity }} | {{ i.title }} | {{ i.before }} -> 0 |
 {% endfor %}
 {% for i in c.new %}
 | new | {{ i.severity }} | {{ i.title }} | 0 -> {{ i.after }} |
