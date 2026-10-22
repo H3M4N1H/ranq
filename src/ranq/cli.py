@@ -320,25 +320,23 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
         f"{report.stats['html_pages']} pages · {count_text}"
     )
     console.print(
-        "[dim]"
+        "[dim]Automated checks: "
         + " · ".join(
             f"{name}: {row['grade']['score']}/100"
             if row["grade"]["score"] is not None
             else f"{name}: Not assessed"
             for name, row in assessment["domains"].items()
-            if name != "Performance"
         )
         + "[/dim]"
     )
     coverage = report.coverage
     if verbose:
-        console.print(f"Performance: {assessment['domains']['Performance']['status']}")
         for note in coverage.get("notes", []):
             console.print(escape(note))
     elif coverage:
         total = coverage.get("html_pages", 0)
         console.print(
-            f"[dim]Performance: {assessment['domains']['Performance']['status']} · "
+            f"[dim]Coverage: "
             f"lab {coverage.get('lab_pages', 0)}/{total} · "
             f"field {coverage.get('field_pages', 0)}/{total} · "
             f"rendered {coverage.get('rendered_pages', 0)}/{total} pages[/dim]"
@@ -346,7 +344,10 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
         # Never hide incomplete-crawl, disabled-check or measurement-failure warnings.
         for note in coverage.get("notes", [])[2:]:
             console.print(f"[yellow]{escape(note)}[/yellow]")
-    console.print("[dim]Custom heuristic, not an industry-standard SEO grade.[/dim]")
+    console.print(
+        "[dim]Custom heuristic: overall combines deductions, not area averages. "
+        "100 = no scored findings in checks run.[/dim]"
+    )
     _print_comparison(report, verbose=verbose)
     if verbose and report.stats.get("framework"):
         console.print(f"[dim]Detected: {escape(report.stats['framework'])}[/dim]")

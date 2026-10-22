@@ -143,3 +143,30 @@ def test_reports_present_statuses_and_mark_legacy_score_deprecated() -> None:
     assert data["score_deprecated"] is True
     assert "Deprecated" in data["score_note"]
     assert data["assessment"]["status"] == "Needs attention"
+
+
+def test_hidden_h1_affects_seo_not_unmeasured_performance() -> None:
+    from ranq.checks.onpage import headings
+
+    ctx = context()
+    from ranq.crawler.parser import parse_html
+
+    parse_html(ctx.pages[0], '<h1 style="opacity:0">Welcome</h1>', URL)
+    hidden = next(i for i in headings(ctx) if i.check_id == "h1-hidden-in-html")
+    assert hidden.category == Category.ONPAGE
+    assert hidden.severity == Severity.MEDIUM
+    coverage = {"html_pages": 1, "assessed_domains": ["SEO", "AEO", "GEO"]}
+    result = assess([hidden], coverage)
+    assert result["domains"]["SEO"]["grade"]["score"] == 86
+    assert result["domains"]["Performance"]["grade"]["score"] is None
+    assert result["domains"]["Performance"]["status"] == "Not assessed"
+    assert result["grade"]["score"] == 86
+    # Real measured LCP is still independently scored under Performance.
+    lcp = Issue(
+        "lab-cwv-poor", "Poor LCP", Severity.MEDIUM, Category.PERFORMANCE, "", "", urls=[URL]
+    )
+    measured = assess([hidden, lcp], coverage)
+    assert measured["domains"]["Performance"]["grade"]["score"] == 86
+    assert measured["grade"]["score"] == 74
+    ctx.pages[0].h1_hidden = False
+    assert not any(i.check_id == "h1-hidden-in-html" for i in headings(ctx))

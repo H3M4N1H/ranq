@@ -12,7 +12,7 @@ Generated {{ r.generated_at }} by Ranq {{ r.version }}
 
 {{ d.assessment.note }}
 
-Findings by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.grade.score ~ "/100" if row.grade.score is not none else "Not assessed" }} — {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}
+Automated checks by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.grade.score ~ "/100" if row.grade.score is not none else "Not assessed" }} — {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}
 
 
 {% for note in d.coverage.notes %}
