@@ -53,6 +53,7 @@ def test_audit_compares_with_previous_run(site_url: str, tmp_path: Path) -> None
         "-o",
         str(out),
         "--no-pagespeed",
+        "--verbose",
         "-n",
         "20",
         "--delay",

@@ -4,6 +4,16 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.3] - 2026-10-22
+
+### Changed
+
+- Make the default audit output concise: nonzero severity counts, compact domain scores and
+  coverage, actionable findings, and one primary report path. Keep incomplete-audit warnings
+  visible. Scoring and generated report contents are unchanged.
+- Add `ranq audit --verbose` (`-v`) for per-page scores, informational notes, full coverage,
+  detailed comparisons, framework detection and all output paths.
+
 ## [0.4.2] - 2026-10-22
 
 ### Changed
