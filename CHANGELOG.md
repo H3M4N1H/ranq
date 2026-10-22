@@ -4,7 +4,22 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.1] - 2026-10-22
+
+### Added
+
+- Contributor guide (`CONTRIBUTING.md`) with the check API and the bar for new checks, a Code
+  of Conduct, and GitHub issue forms for bugs, false positives and feature requests.
+- A demo GIF at the top of the README, reproducible with `scripts/record_demo.py`. README
+  images and links now use absolute URLs so they render on PyPI.
+
+### Changed
+
+- Implicit AI crawler policies and word-overlap differences between brand descriptions are
+  informational and no longer reduce the health score. Actual blocked search bots and
+  explicit policy mismatches remain actionable findings.
+- Scores may increase due to these detector corrections alone. Establish a fresh baseline
+  with this version before measuring website improvements; retain the old reports.
 
 ### Fixed
 
@@ -20,14 +35,6 @@ All notable changes to Ranq (formerly SEOForge). The format follows
   `priceSpecification` object; distinguish recommended currency from required price.
 - Name the failing lab metric (LCP, CLS, or both) and give the corresponding fixes, without
   assuming why field data was unavailable.
-
-### Changed
-
-- Implicit AI crawler policies and word-overlap differences between brand descriptions are
-  informational and no longer reduce the health score. Actual blocked search bots and
-  explicit policy mismatches remain actionable findings.
-- Scores may increase due to these detector corrections alone. Establish a fresh baseline
-  with this version before measuring website improvements; retain the old reports.
 
 ## [0.4.0] - 2026-10-13
 
@@ -132,6 +139,7 @@ tools, citation score, AI-visibility tracker), indexing (IndexNow, Search Consol
 off-page helpers, `seoforge fix`, HTML / Markdown / JSON reports, Docker image, GitHub Action
 and CI.
 
+[0.4.1]: https://github.com/H3M4N1H/ranq/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/H3M4N1H/ranq/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/H3M4N1H/ranq/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/H3M4N1H/ranq/compare/2e7659f...v0.2.0
