@@ -17,6 +17,7 @@ from ranq import __version__
 from ranq.audit import AuditOptions, run_audit
 from ranq.config import EXAMPLE_CONFIG, Config, load_config
 from ranq.models import Severity
+from ranq.report.assessment import status as assessment_status
 from ranq.report.builder import Report
 from ranq.report.compare import comparable, compare, load_previous
 from ranq.report.limitations import DISCLAIMER
@@ -195,7 +196,7 @@ def audit(
         typer.Option(
             "--verbose",
             "-v",
-            help="Show page scores, optional advice, coverage details and comparison history.",
+            help="Show page findings, optional advice, coverage details and comparison history.",
         ),
     ] = False,
 ) -> None:
@@ -288,26 +289,14 @@ def _print_comparison(report: Report, *, verbose: bool = False) -> None:
     cmp = report.comparison
     if cmp is None:
         return
-    if not verbose:
-        if cmp.delta is None:
-            console.print(f"[dim]Comparison: {escape(cmp.comparison_note)}[/dim]")
-        else:
-            console.print(
-                f"[dim]Since last audit: {cmp.delta:+d} points · {len(cmp.new)} new · "
-                f"{len(cmp.fixed)} no longer reported · {len(cmp.changed)} changed[/dim]"
-            )
-        return
-    delta = cmp.delta
-    change = (
-        f"score {cmp.previous_score} -> {cmp.score} ({delta:+d})"
-        if delta is not None
-        else f"score {cmp.previous_score} -> {cmp.score} ({cmp.comparison_note})"
-    )
     console.print(
-        f"Since {cmp.previous_generated_at}: {change} · "
-        f"{len(cmp.fixed)} no longer reported · {len(cmp.new)} new · "
-        f"{len(cmp.changed)} changed · {cmp.unchanged} unchanged"
+        f"Since last audit: {len(cmp.new)} new · {len(cmp.fixed)} no longer reported · "
+        f"{len(cmp.changed)} changed"
     )
+    if cmp.comparison_note and "coverage" in cmp.comparison_note.lower():
+        console.print("[dim]Coverage changed; findings may not be directly comparable.[/dim]")
+    if not verbose:
+        return
     for c in cmp.fixed[:8]:
         console.print(f"  [green]no longer reported[/green]  {c.title}")
     for c in cmp.new[:8]:
@@ -320,26 +309,32 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
     counts = report.severity_counts
     count_text = (
         " · ".join(f"{counts[s]} {s}" for s in ("critical", "high", "medium", "low") if counts[s])
-        or "No scored findings"
+        or "No actionable findings"
     )
+    assessment = report.assessment
     console.print(
-        f"\nAutomated audit health [bold]{report.score}/100[/bold] · "
+        f"\nAudit: [bold]{assessment['status']}[/bold] · "
         f"{report.stats['html_pages']} pages · {count_text}"
     )
-    if report.domain_scores:
-        console.print(
-            "[dim]Findings: "
-            + " · ".join(f"{name} {row['score']}/100" for name, row in report.domain_scores.items())
-            + "[/dim]"
+    console.print(
+        "[dim]"
+        + " · ".join(
+            f"{name}: {row['status']}"
+            for name, row in assessment["domains"].items()
+            if name != "Performance"
         )
+        + "[/dim]"
+    )
     coverage = report.coverage
     if verbose:
+        console.print(f"Performance: {assessment['domains']['Performance']['status']}")
         for note in coverage.get("notes", []):
             console.print(escape(note))
     elif coverage:
         total = coverage.get("html_pages", 0)
         console.print(
-            f"[dim]Coverage: lab {coverage.get('lab_pages', 0)}/{total} · "
+            f"[dim]Performance: {assessment['domains']['Performance']['status']} · "
+            f"lab {coverage.get('lab_pages', 0)}/{total} · "
             f"field {coverage.get('field_pages', 0)}/{total} · "
             f"rendered {coverage.get('rendered_pages', 0)}/{total} pages[/dim]"
         )
@@ -375,20 +370,17 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
         console.print(f"  ... {len(shown) - 15} more in the report")
     if not verbose and counts["info"]:
         console.print(
-            f"[dim]{counts['info']} informational notes in the report (no score impact).[/dim]"
+            f"[dim]{counts['info']} informational notes in the report (no assessment impact).[/dim]"
         )
     if verbose and report.pages:
         pages = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
-        pages.add_column("Page score", justify="right")
+        pages.add_column("Status")
         pages.add_column("Page")
         pages.add_column("Issues", justify="right")
         for row in report.pages[:15]:
-            score = row["score"]
-            color = "green" if score >= 90 else "yellow" if score >= 70 else "red"
-            pages.add_row(f"[{color}]{score}[/{color}]", row["url"], str(len(row["issues"])))
-        console.print(
-            "\nPer page (page-level issues only; site-wide issues count in the health score):"
-        )
+            label = row.get("status", assessment_status([i["severity"] for i in row["issues"]]))
+            pages.add_row(label, row["url"], str(len(row["issues"])))
+        console.print("\nPage findings (site-wide findings are listed separately):")
         console.print(pages)
         if len(report.pages) > 15:
             console.print(f"  ... {len(report.pages) - 15} more pages in the report")
@@ -396,7 +388,7 @@ def _print_summary(report: Report, *, verbose: bool = False) -> None:
         console.print(f"[dim]{DISCLAIMER}[/dim]")
     else:
         console.print(
-            "[dim]Estimate of detected issues, not rankings or AI visibility. Details: --verbose[/dim]"
+            "[dim]Detected issues only; no issues detected does not mean verified readiness. Details: --verbose[/dim]"
         )
 
 

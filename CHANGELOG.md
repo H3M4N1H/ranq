@@ -4,6 +4,26 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-22
+
+### Changed
+
+- Replace presented percentage grades with simple, severity-based assessments: Critical
+  issues, Needs attention, Minor issues, No issues detected, or Not assessed. Report SEO,
+  AEO, GEO and performance separately, with explicit coverage and unknown visibility.
+- Retain deprecated JSON score fields for compatibility, but remove them from CLI, HTML,
+  Markdown and displayed comparisons. No issues detected is not a verified pass.
+- Treat a single slow crawler download as an informational observation, not a TTFB or
+  real-user performance failure. Keep lab/field Core Web Vitals findings actionable.
+- Keep standing AI-policy and llms.txt guidance optional and answer advice applicable.
+
+### Fixed
+
+- Partial field data no longer hides lab findings for other metrics; a second lab tool
+  cannot silently overwrite an observed poor metric. Retain the worst observed lab value
+  as a diagnostic and prefer field data only for the same URL/metric.
+- Comparison detects changes to the actual affected URLs, even when their count is equal.
+
 ## [0.4.3] - 2026-10-22
 
 ### Changed

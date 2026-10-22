@@ -12,6 +12,7 @@ from ranq import __version__
 from ranq.analysis.framework import detect as detect_framework
 from ranq.checks.base import AuditContext
 from ranq.models import Effort, Issue, Severity
+from ranq.report.assessment import assess, domain_for, status
 from ranq.report.compare import Comparison
 from ranq.report.limitations import DISCLAIMER, LIMITATIONS, SCOPE_NOTES
 from ranq.report.scoring import SCORE_NOTE, SCORING_VERSION
@@ -22,12 +23,12 @@ STANDING_TASKS = {
         "the sitemap in both (`ranq index gsc-sitemap`, `ranq index bing`).",
         "Set up IndexNow (`ranq index indexnow-key`) so Bing, Yandex, Seznam, Naver and Yep "
         "learn about changes within minutes.",
-        "Publish robots.txt with an explicit AI-crawler policy and an llms.txt (`ranq fix`).",
+        "Optionally publish llms.txt or explicit AI rules only when they serve a real need.",
     ],
     "60": [
         "Add or improve structured data for your key page types and validate it in Google's "
         "Rich Results Test and the Schema.org validator.",
-        "Rewrite key pages with direct 40-60 word answers under question-style headings "
+        "For applicable informational content, review direct answers under question headings "
         "(see AEO findings).",
         "Make your brand entity consistent: same name, logo, description and links on every "
         "profile listed in the entity checklist.",
@@ -62,6 +63,10 @@ class Report:
     version: str = __version__
 
     @property
+    def assessment(self) -> dict[str, Any]:
+        return assess(self.issues, self.coverage)
+
+    @property
     def severity_counts(self) -> dict[str, int]:
         counts = Counter(i.severity.value for i in self.issues)
         return {s.value: counts.get(s.value, 0) for s in Severity}
@@ -71,6 +76,8 @@ class Report:
             "site": self.site,
             "generated_at": self.generated_at,
             "version": self.version,
+            "assessment": self.assessment,
+            "score_deprecated": True,
             "score": self.score,
             "score_note": SCORE_NOTE,
             "scoring_version": SCORING_VERSION,
@@ -167,6 +174,7 @@ def page_scores(issues: list[Issue], page_urls: list[str]) -> list[dict[str, Any
             {
                 "url": url,
                 "score": _to_score(sum(_penalty(i, 1.0) for i in page_issues)),
+                "status": status([str(i.severity) for i in page_issues]),
                 "issues": [
                     {"check_id": i.check_id, "title": i.title, "severity": i.severity.value}
                     for i in page_issues
@@ -263,9 +271,8 @@ def audit_coverage(ctx: AuditContext) -> dict[str, Any]:
     notes = [
         f"{len(urls)} HTML page(s) audited; lab performance: {len(lab)}/{len(urls)}; "
         f"field performance: {len(field_urls)}/{len(urls)}; browser rendered: {rendered}/{len(urls)}.",
-        "Findings scores only: rankings and actual AI mentions/citations are not measured. "
         "Undiscovered pages and unmeasured checks are not verified. "
-        "100 means no scored findings in this audit, not perfect SEO.",
+        "Rankings and actual AI mentions/citations are not measured.",
     ]
     if ctx.crawl.truncated:
         notes.append("Crawl stopped at the page limit; this is a partial audit.")
@@ -273,7 +280,17 @@ def audit_coverage(ctx: AuditContext) -> dict[str, Any]:
         notes.append("Disabled checks: " + ", ".join(ctx.config.disabled_checks))
     if any(r.error for r in perf):
         notes.append("Some performance requests failed; missing results are not passes.")
+    evaluated = (
+        {domain_for(c["category"]) for c in ctx.extras.get("checks_run", [])} if urls else set()
+    )
+    if not ctx.extras.get("aeo"):
+        evaluated.discard("AEO")
+    if not ctx.extras.get("geo"):
+        evaluated.discard("GEO")
+    if not lab and not field_urls:
+        evaluated.discard("Performance")
     return {
+        "assessed_domains": sorted(evaluated),
         "audited_urls": sorted(urls),
         "lab_urls": sorted(lab),
         "field_urls": sorted(field_urls),

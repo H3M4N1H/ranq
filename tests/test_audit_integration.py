@@ -140,4 +140,4 @@ def test_cli_audit(site_url: str, tmp_path: Path) -> None:
     )
     assert result.exit_code == 1, result.output  # the test site has critical issues
     assert (out / "report.html").exists()
-    assert "Automated audit health" in result.output
+    assert "Audit:" in result.output

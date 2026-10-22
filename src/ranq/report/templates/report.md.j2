@@ -6,9 +6,9 @@ Generated {{ r.generated_at }} by Ranq {{ r.version }}
 
 ## Summary
 
-{{ d.score_note }}
+{{ d.assessment.note }}
 
-Findings by area: {% for name, row in d.domain_scores.items() %}{{ name }} {{ row.score }}/100 ({{ row.scored_findings }} scored findings){% if not loop.last %} · {% endif %}{% endfor %}
+Findings by area: {% for name, row in d.assessment.domains.items() %}{{ name }}: {{ row.status }} ({{ row.findings }} findings){% if not loop.last %} · {% endif %}{% endfor %}
 
 
 {% for note in d.coverage.notes %}
@@ -17,7 +17,7 @@ Findings by area: {% for name, row in d.domain_scores.items() %}{{ name }} {{ ro
 
 | Metric | Value |
 |---|---|
-| Automated audit health (heuristic estimate) | **{{ r.score }}/100** |
+| Audit assessment | **{{ d.assessment.status }}** |
 {% for k, v in r.stats.items() %}
 | {{ k.replace('_', ' ') }} | {{ v }} |
 {% endfor %}
@@ -30,7 +30,9 @@ Findings by area: {% for name, row in d.domain_scores.items() %}{{ name }} {{ ro
 {% set c = d.comparison %}
 ## Changes since {{ c.previous_generated_at }}
 
-Score **{{ c.previous_score }} -> {{ c.score }}** ({% if c.delta is not none %}{{ '+' if c.delta > 0 else '' }}{{ c.delta }}{% else %}{{ c.comparison_note }}{% endif %}) · {{ c.fixed|length }} no longer reported · {{ c.new|length }} new · {{ c.changed|length }} changed · {{ c.unchanged }} unchanged
+{{ c.fixed|length }} no longer reported · {{ c.new|length }} new · {{ c.changed|length }} changed · {{ c.unchanged }} unchanged
+
+Changes in findings can reflect measurements, coverage or detector changes, not just website changes.
 
 {% if c.fixed or c.new or c.changed %}
 | Status | Severity | Issue | URLs before -> now |
@@ -45,25 +47,18 @@ Score **{{ c.previous_score }} -> {{ c.score }}** ({% if c.delta is not none %}{
 | changed | {{ i.severity }} | {{ i.title }} | {{ i.before }} -> {{ i.after }} |
 {% endfor %}
 {% endif %}
-{% if c.pages %}
 
-| Page | Score before -> now |
-|---|---|
-{% for p in c.pages %}
-| {{ p.url }} | {{ p.before if p.before is not none else 'new' }} -> {{ p.after if p.after is not none else 'gone' }} |
-{% endfor %}
-{% endif %}
 
 {% endif %}
 {% if d.page_scores %}
-## Page scores
+## Page findings
 
-Each page is scored on its own page-level issues (worst first). Site-wide issues only affect the overall health score.
+Each page lists its detected issues. Site-wide findings are listed separately; an issue-free page is not a verified pass.
 
-| Page | Score | Issues on this page |
+| Page | Status | Issues on this page |
 |---|---|---|
 {% for p in d.page_scores %}
-| {{ p.url }} | **{{ p.score }}** | {% for i in p.issues %}{{ i.severity }}: {{ i.title }}{% if not loop.last %}<br>{% endif %}{% else %}none{% endfor %} |
+| {{ p.url }} | **{{ p.status|default("Not assessed") }}** | {% for i in p.issues %}{{ i.severity }}: {{ i.title }}{% if not loop.last %}<br>{% endif %}{% else %}none{% endfor %} |
 {% endfor %}
 
 {% endif %}

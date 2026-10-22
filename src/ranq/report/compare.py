@@ -106,7 +106,7 @@ def compare(
                 IssueChange(cid, issue.title, issue.severity.value, 0, len(issue.urls))
             )
         elif (
-            len(old.get("urls", [])) != len(issue.urls)
+            set(old.get("urls", [])) != set(issue.urls)
             or old.get("severity") != issue.severity.value
         ):
             result.changed.append(

@@ -684,12 +684,13 @@ def response_time(ctx: AuditContext) -> Iterator[Issue]:
     if slow:
         yield Issue(
             "slow-response",
-            f"{len(slow)} page(s) took over 800 ms to download",
-            Severity.MEDIUM,
+            f"{len(slow)} page(s) took over 800 ms to download (single crawl sample)",
+            Severity.INFO,
             Category.PERFORMANCE,
-            "Measured from this crawler's location - a rough proxy for server response time. "
-            "web.dev recommends a TTFB of 0.8 s or less.",
-            "Add caching (CDN / full-page cache), optimize database queries, enable compression.",
+            "One full-response download measured from this crawler, including network transfer. "
+            "This is not TTFB, LCP or a real-user measurement; network conditions can vary.",
+            "Repeat measurements under comparable conditions. Investigate server or transfer "
+            "delays if they persist; use lab and field data to assess user experience.",
             effort=Effort.MEDIUM,
             urls=sorted(slow, key=lambda u: -slow[u]),
             evidence=slow,

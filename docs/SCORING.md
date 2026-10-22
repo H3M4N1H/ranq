@@ -1,82 +1,85 @@
-# Automated audit health
+# Audit assessment
 
-Ranq scores detected issues, not rankings, content quality in every context, or actual AI
-mentions and citations. The number is a transparent prioritization heuristic. There is no
-validated universal SEO/AEO/GEO grade, and this model is not calibrated against ranking data.
+Ranq 0.5 replaces displayed percentage grades with a small, transparent findings rubric.
+The old scores were not validated SEO grades. Changing a multiplier could make results
+look better or worse without making them more accurate, so they are no longer presented.
 
-## Why version 2 changes scores
+## Rules
 
-Version 1 divided severity weights by four before applying its curve. A whole-site critical
-finding alone scored 78; a medium finding alone scored 96. Those outcomes understated the
-severity Ranq had assigned to the findings. Version 2 uses the existing weights in full.
-It does not add findings, reverse page-type exemptions, or charge for optional INFO guidance.
+| Observed findings | Assessment |
+|---|---|
+| Any critical finding | Critical issues |
+| Any high or medium finding | Needs attention |
+| Low findings only | Minor issues |
+| No actionable findings in an assessed area | No issues detected |
+| Required analysis unavailable or area's checks not run, with no observed problems | Not assessed |
 
-| One finding affecting the entire audited site | Weight | Old score | Version 2 |
-|---|---:|---:|---:|
-| Critical | 100 | 78 | 37 |
-| High | 40 | 90 | 67 |
-| Medium | 15 | 96 | 86 |
-| Low | 5 | 99 | 95 |
-| Info | 0 | 100 | 100 |
+INFO is advice or an observation and does not worsen the assessment. Findings always take
+precedence over missing coverage: an observed critical problem must not disappear behind
+"Not assessed". Counts, affected URLs, severity, evidence and recommendations provide detail
+within each status. Repeated/overlapping observations do not add arithmetic penalties.
+This rubric is a Ranq reporting policy, not an industry certification or empirical grade.
 
-These are explicit policy choices, not probabilities or Google/Lighthouse scores. Regression
-scenarios cover clean sites, optional-only findings, isolated low issues, high/critical
-failures, multiple medium issues, affected-page share, and large numbers of findings. A site
-with two full-reach medium findings and five low findings scores 58; fixing a finding always
-improves its unrounded score. A single low issue still leaves 95. We do not force every site
-into a low band or penalize a legitimate one-page site for being small.
+SEO covers crawl, technical, metadata, structured-data, keyword, indexing and security checks.
+AEO covers answer-extraction and E-E-A-T checks. GEO covers entity/citation/crawler checks.
+Performance has a separate assessment, while its actionable findings also affect the overall
+summary. These groups are convenient organization, not proof that a concern affects only one
+search channel. Actual search rankings and AI visibility remain **Not measured** by an audit.
 
-## Formula and scope
+## What the labels do not establish
 
-`score = round(100 * exp(-sum(penalties) / 100))`
+No issues detected means exactly that. It does not mean every possible test passed, that
+content is relevant for every query, or that AI providers will cite it. Some checks are only
+applicable to particular page types. AEO/GEO without the corresponding analysis is Not assessed;
+performance without lab/field results is Not assessed unless another actionable measurement
+exists. An entirely disabled audit cannot produce a clean assessment.
 
-- Site-wide finding: penalty = severity weight.
-- Page finding: penalty = weight × (0.3 + 0.7 × affected unique URLs / audited HTML pages).
-  The share is capped at 1. The 30% floor keeps a serious isolated defect visible in a large
-  crawl; site-wide defects cannot be diluted by adding pages.
-- INFO contributes zero. Effort affects task priority, not health.
-- Audited sites have a minimum score of 1; no auditable HTML produces 0. Integer scores can
-  saturate at 1 on severely broken sites; use the findings to distinguish them.
-- Per-page scores apply the same weights to that page's findings; site-wide issues are
-  excluded, so a page can score higher than the overall audit.
-- JSON includes `scoring_version`, `score_breakdown` (weight, affected share, penalty), and
-  `domain_scores`. Recompute the total from the breakdown to explain every deduction.
+Coverage records what ran, HTML pages crawled, lab/field measurements and browser rendering.
+Disabled checks and crawl limits stay visible. Partial coverage does not erase known findings,
+and missing data is never invented as a positive or negative site signal. An audit cannot
+prove it discovered all URLs. Counts of measured URLs do not mean every metric was available.
 
-SEO, AEO and GEO are disjoint findings groups, not independently measured readiness grades:
-AEO includes answer extraction and E-E-A-T; GEO includes crawler access, citation heuristics
-and entity checks; SEO contains the remaining crawl, technical, performance, metadata,
-structured-data, indexing, keyword and security checks. The overall score combines penalties,
-not the arithmetic average of these group scores. No scored GEO findings means 100 for the
-GEO group, **not** verified visibility in AI answers.
+## Performance evidence
 
-## Coverage and comparisons
+- A crawler's download duration includes connection/network transfer and body download. It
+  is not TTFB or LCP. A single sample over 800 ms is INFO, with a recommendation to remeasure.
+- Lab measurements are diagnostics and can vary. Poor LCP/CLS and low Lighthouse results
+  remain actionable, with raw evidence. Multiple tools' poor lab values are retained using
+  the worst observed value per metric, not silently overwritten by tool order.
+- Field data describes observed real-user performance. For each URL/metric it takes precedence
+  over the corresponding lab warning. Partial field data does not suppress unrelated lab
+  metrics. Neither data source is a measurement of overall SEO quality.
+- There are no additive deductions: a slow download and poor LCP cannot multiply a percentage
+  penalty. Both may be useful evidence without proving the same root cause.
 
-Coverage shows audited HTML URLs, URLs with any lab measurements, URLs with field measurements,
-rendered-page count, crawl truncation and disabled checks. A measurement count does not mean
-all metrics were measured. Missing or failed performance requests are unknown, never proof
-of fast pages. An audit cannot prove it discovered every URL. Missing data is disclosed rather
-than being treated as a website defect or assigned invented performance values.
+## History and compatibility
 
-A score of 100 means no scored findings within the completed audit scope. It cannot certify
-uncrawled pages, disabled checks, rankings, or actual AI visibility. Audits should be compared
-with consistent configuration and measurements; even matching coverage cannot remove lab
-variability or changes in detector behavior.
+Displayed history tracks new, changed and **no longer reported** findings, not points won or
+lost. A disappearing warning may reflect measurement variation, changed coverage, configuration,
+detector changes or website changes; it is not proof of remediation. Changed URL sets count
+as a change even when their size is unchanged.
 
-When the scoring version or tracked coverage differs, report comparisons suppress the numeric
-delta and per-page score changes. Old reports without a scoring version are treated as legacy.
-Issue changes remain available, labeled **no longer reported** instead of **fixed**: detection,
-coverage, configuration or website changes can all explain a finding disappearing. The JSON
-`fixed` key remains for backward compatibility; it does not prove remediation.
+JSON adds `assessment` (version 1) with overall and domain statuses, affected URLs, limitations,
+and explicit unmeasured rankings/visibility. The old `score`, `domain_scores`, `page_scores`
+score values, `score_breakdown` and comparison delta fields remain for existing consumers.
+`score_deprecated: true` and `score_note` identify them as legacy, unvalidated penalty values.
+New consumers should use `assessment`, page `status`, findings and coverage. The legacy formula
+is unchanged; its continued presence is a compatibility measure, not a recommendation.
 
-## Research informing the boundaries
+## Validation and references
 
-- [Lighthouse performance scoring](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring)
-  is a weighted combination of measured metric scores, with empirically derived distributions.
-  Ranq's issue-severity model is not an alternative Lighthouse performance measurement.
-- [Google's Core Web Vitals guidance](https://developers.google.com/search/docs/appearance/core-web-vitals)
-  distinguishes loading, interactivity and stability. Ranq preserves these findings and
-  distinguishes lab results from real-user measurements.
+Synthetic regression scenarios cover clean findings, disabled/unavailable checks, optional
+advice, critical failures, many minor findings, overlapping performance observations, partial
+field data, tool order and rendered output. They validate the implementation of the rubric;
+they do not constitute an independently reviewed SEO benchmark.
 
-Future empirical calibration needs a representative, independently reviewed set of sites and
-severity judgments. Two example domains cannot establish that calibration. Changes to these
-policy weights must be documented and versioned, with the scenario tests updated deliberately.
+- [Google: understanding page experience](https://developers.google.com/search/docs/appearance/page-experience)
+  explains that there is no single page-experience ranking signal and good tool scores do not
+  guarantee rankings.
+- [web.dev: lab and field data differences](https://web.dev/articles/lab-and-field-data-differences)
+  explains why simulated and real-user measurements differ.
+- [Lighthouse variability](https://github.com/GoogleChrome/lighthouse/blob/main/docs/variability.md)
+  documents variation even when website code is unchanged.
+
+Ranq remains an automated diagnostic tool, not a replacement for reviewing query intent,
+content usefulness, accessibility, Search Console evidence or real AI visibility observations.

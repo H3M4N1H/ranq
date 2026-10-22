@@ -53,12 +53,12 @@ def test_compact_summary_keeps_actionable_findings_and_coverage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     text = render_summary(monkeypatch, sample_report())
-    assert "78/100" in text and "Hidden H1 on two pages" in text
+    assert "Audit: Needs attention" in text and "Hidden H1 on two pages" in text
     assert "lab 3/4" in text and "field 0/4" in text and "rendered 0/4" in text
     assert "Crawl stopped at the page limit" in text
-    assert "1 informational notes" in text and "no score impact" in text
+    assert "1 informational notes" in text and "no assessment impact" in text
     assert "Optional crawler policy" not in text and "https://example.test/work" not in text
-    assert "not rankings or AI visibility" in text and "--verbose" in text
+    assert "does not mean verified readiness" in text and "--verbose" in text
     assert "0 critical" not in text and "0 high" not in text
 
 
@@ -67,7 +67,7 @@ def test_verbose_summary_retains_optional_advice_and_page_scores(
 ) -> None:
     text = render_summary(monkeypatch, sample_report(), verbose=True)
     assert "Optional crawler policy" in text
-    assert "https://example.test/work" in text and "82" in text
+    assert "https://example.test/work" in text and "No issues detected" in text
     assert "Detailed coverage" in text and "Detailed limits" in text
     assert cli.DISCLAIMER.split(".")[0] in text.replace("\n", " ")
 
@@ -80,7 +80,7 @@ def test_compact_model_change_does_not_show_fake_regression(
         {"score": 94, "issues": []}, report.score, report.issues, report.pages
     )
     text = render_summary(monkeypatch, report)
-    assert "Scoring model changed" in text and "not comparable" in text
+    assert "Since last audit" in text and "/100" not in text
     assert "94 -> 78" not in text and "-16" not in text
 
 
@@ -89,4 +89,4 @@ def test_info_only_summary_does_not_suggest_actionable_problems(
 ) -> None:
     report = sample_report()
     report.issues = report.issues[1:]
-    assert "No scored findings" in render_summary(monkeypatch, report)
+    assert "No actionable findings" in render_summary(monkeypatch, report)
