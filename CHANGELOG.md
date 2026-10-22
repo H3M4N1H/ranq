@@ -4,6 +4,18 @@ All notable changes to Ranq (formerly SEOForge). The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-10-22
+
+### Changed
+
+- Version the audit scoring model and remove the fourfold severity discount that allowed
+  substantial findings to retain near-perfect scores. Optional INFO findings remain unscored.
+- Show automated audit health, separate SEO/AEO/GEO findings scores, and explicit lab, field,
+  rendering, disabled-check and crawl coverage. Include a reproducible JSON penalty breakdown.
+- Suppress score deltas across model/coverage changes. Label disappearing findings "no longer
+  reported" rather than claiming that the website was fixed. Legacy JSON `fixed` is retained.
+- Document scoring assumptions and calibration scenarios in `docs/SCORING.md`.
+
 ## [0.4.1] - 2026-10-22
 
 ### Added

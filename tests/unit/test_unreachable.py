@@ -39,7 +39,9 @@ def test_empty_crawl_scores_zero() -> None:
         Issue(f"x{i}", "x", Severity.HIGH, "crawl", "", "", urls=["https://s.test/"])
         for i in range(40)
     ]
-    assert 0 < health_score(many, 1) < health_score(many[:20], 1) < 100  # never bottoms out
+    assert (
+        0 < health_score(many[:6], 1) < health_score(many[:3], 1) < 100
+    )  # retains resolution for several severe findings
 
 
 def test_site_wide_issues_are_not_diluted_by_page_count() -> None:

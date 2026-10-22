@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 from ranq.cli import app
 from ranq.models import Issue, Severity
 from ranq.report.compare import compare
+from ranq.report.scoring import SCORING_VERSION
 
 
 def _issue(cid: str, sev: Severity, n: int) -> Issue:
@@ -15,6 +16,7 @@ def _issue(cid: str, sev: Severity, n: int) -> Issue:
 def test_compare_buckets() -> None:
     previous = {
         "site": "https://s.test",
+        "scoring_version": SCORING_VERSION,
         "generated_at": "2026-10-01 10:00 UTC",
         "score": 70,
         "issues": [
@@ -66,7 +68,7 @@ def test_audit_compares_with_previous_run(site_url: str, tmp_path: Path) -> None
     (out / "report.json").write_text(json.dumps(data))
     second = CliRunner().invoke(app, args)
     assert second.exit_code == 0, second.output
-    assert "Since" in second.output and "fixed  Old problem" in second.output
+    assert "Since" in second.output and "no longer reported  Old problem" in second.output
     saved = json.loads((out / "report.json").read_text())
     assert saved["comparison"]["fixed"][0]["check_id"] == "gone-now"
     assert "Changes since" in (out / "report.md").read_text()
